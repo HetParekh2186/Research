@@ -1,0 +1,236 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+# Install packages (only need to run this once)
+install.packages("nhanesA")
+install.packages("tidyverse")
+
+# Load the libraries
+library(nhanesA)
+library(tidyverse)
+```
+```{r}
+
+```
+
+```{r}
+library(nhanesA)
+
+# 1. Define the start years for each cycle
+years <- c(2003, 2005, 2007, 2009, 2011, 2013, 2015, 2017)
+
+# 2. Pull tables for each year with a safer approach
+all_tables_list <- lapply(years, function(y) {
+  tryCatch({
+    df <- nhanesTables('LAB', y)
+    if(!is.null(df)) df$CycleYear <- y
+    return(df)
+  }, error = function(e) return(NULL))
+})
+
+# Combine into one master dataframe
+master_list <- do.call(rbind, all_tables_list)
+
+# 3. Create a regex pattern for your keywords
+# This covers heavy metals, PFAS, VOCs, Phthalates, and Pesticides
+keywords <- "Cadmium|Lead|Mercury|Perfluoro|Polyfluoro|VOCs|Volatile|Phthalate|Pesticide|Organo|Pyrethroid|PAH|Albumin|Creatinine|Perchlorate"
+
+# 4. Use grepl to filter. 
+# We search across ALL columns just in case the naming varies
+matches <- master_list[apply(master_list, 1, function(row) any(grepl(keywords, row, ignore.case = TRUE))), ]
+
+# 5. Clean output: This selects columns by index to avoid "undefined column" errors
+# Column 1 is usually File Name, Column 2 is Description
+final_list <- unique(matches[, c(1, 2, ncol(matches))]) 
+colnames(final_list) <- c("File_Name", "Description", "Year")
+
+print(final_list)
+```
+
+```{r}
+# This function loops through your 'final_list' and pulls the variable names
+# Warning: This might take a minute as it pings the CDC server for each file
+all_vars <- lapply(final_list$File_Name, function(f) {
+  tryCatch({
+    v <- nhanesTableVars('LAB', f)
+    v$File_Name <- f
+    return(v)
+  }, error = function(e) return(NULL))
+})
+
+# Combine into a searchable master variable list
+master_variables <- do.call(rbind, all_vars)
+
+# Now you can search for "Lead" or "PFOS" across ALL 134 files at once
+head(master_variables)
+```
+
+
+```{r}
+# Assuming 'final_list' is the dataframe you created earlier
+# 1. Create a "BaseName" by removing the cycle suffix (e.g., _H, _I)
+final_list$BaseName <- gsub("_[A-Z]$|_[0-9]$|_S$", "", final_list$File_Name)
+
+# 2. Group the files to see which chemicals repeat across years
+library(dplyr)
+grouped_summary <- final_list %>%
+  group_by(BaseName) %>%
+  summarise(
+    Chemical_Description = first(Description),
+    Cycles_Found = n(),
+    Years = paste(sort(unique(Year)), collapse = ", "),
+    Actual_File_Codes = paste(sort(unique(File_Name)), collapse = ", ")
+  ) %>%
+  arrange(desc(Cycles_Found))
+
+# 3. View the grouped list
+print(grouped_summary)
+
+# 4. Optional: Save this to a CSV so you can look at it in Excel
+# write.csv(grouped_summary, "NHANES_Chemical_Groups.csv", row.names = FALSE)
+```
+```{r}
+library(nhanesA)
+
+# 1. Filter your list for a specific cycle (e.g., 2017-2018 / 'J')
+# Adjust the pattern if your 'final_list' naming convention differs
+target_cycle_files <- final_list$File_Name[grepl("_J$", final_list$File_Name)]
+
+# 2. Download only the SEQN column for each file
+# We store them in a list of vectors
+id_list <- list()
+
+for (file in target_cycle_files) {
+  message("Downloading IDs for: ", file)
+  try({
+    df <- nhanes(file)
+    if ("SEQN" %in% names(df)) {
+      id_list[[file]] <- df$SEQN
+    }
+  }, silent = TRUE)
+}
+
+# 3. Initialize an empty Matrix
+n <- length(id_list)
+overlap_matrix <- matrix(0, nrow = n, ncol = n)
+colnames(overlap_matrix) <- names(id_list)
+rownames(overlap_matrix) <- names(id_list)
+
+# 4. Fill the matrix with the count of intersecting IDs
+for (i in 1:n) {
+  for (j in 1:n) {
+    overlap_matrix[i, j] <- length(intersect(id_list[[i]], id_list[[j]]))
+  }
+}
+
+# 5. View the matrix
+print(overlap_matrix)
+```
+
+```{r}
+# Create a data frame for the 2017-2018 (Cycle J) Matrix Key
+matrix_key <- data.frame(
+  Matrix_Code = c(
+    "ALB_CR_J", "PBCD_J", "IHGEM_J", "UHG_J", "VOCWB_J", 
+    "PFAS_J", "PHTHTE_J", "SSPFAS_J", "OPD_J", "PERNT_J", 
+    "UVOC_J", "SSUVOC_J", "UPHOPM_J", "SSUVCM_J", "PAH_J"
+  ),
+  Full_Description = c(
+    "Albumin & Creatinine",
+    "Cadmium, Lead, Total Mercury, Selenium, & Manganese",
+    "Mercury: Inorganic, Ethyl and Methyl",
+    "Mercury: Inorganic",
+    "Volatile Organic Compounds (VOCs) & Trihalomethanes/MTBE",
+    "Perfluoroalkyl and Polyfluoroalkyl Substances (PFAS)",
+    "Phthalates & Plasticizers Metabolites",
+    "PFAS (Surplus)",
+    "Organophosphate Insecticides - Dialkyl Phosphate Metabolites",
+    "Perchlorate, Nitrate & Thiocyanate",
+    "Volatile Organic Compound (VOC) Metabolites",
+    "Volatile Organic Compound (VOC) Metabolites II (Surplus)",
+    "Pyrethroids, Herbicides, & Organophosphorus Metabolites",
+    "VOC Metabolites: Benzene & Methylating Agent Biomarkers (Surplus)",
+    "Polyaromatic Hydrocarbons (PAHs)"
+  ),
+  Specimen_Type = c(
+    "Urine", "Blood", "Blood", "Urine", "Blood", 
+    "Serum", "Urine", "Serum", "Urine", "Urine", 
+    "Urine", "Urine", "Urine", "Urine", "Urine"
+  ),
+  stringsAsFactors = FALSE
+)
+
+# View it cleanly in RStudio's data viewer
+View(matrix_key)
+
+# Or print it out in the console
+print(matrix_key)
+```
+
+
+```{r}
+library(nhanesA)
+
+# 1. Define the cycles (C=2003 through J=2018)
+cycles <- c("C", "D", "E", "F", "G", "H", "I", "J")
+
+# 2. Define the core chemical base names
+base_names <- c("ALB_CR", "PBCD", "IHGEM", "UHG", "VOCWB", "PFAS", "PHTHTE", "OPD", "PERNT", "UVOC", "UPHOPM", "PAH")
+
+# 3. Initialize the Master Matrix with zeros
+n <- length(base_names)
+master_matrix <- matrix(0, nrow = n, ncol = n)
+rownames(master_matrix) <- base_names
+colnames(master_matrix) <- base_names
+
+# 4. Loop through every cycle and add up the overlaps
+for (cyc in cycles) {
+  message("\nProcessing Cycle: ", cyc)
+  
+  # Temporary list to hold the IDs for this specific cycle
+  cycle_ids <- list()
+  
+  for (base in base_names) {
+    # Handle the PFAS naming quirk (PFC for C-G, PFAS for H-J)
+    if (base == "PFAS" && cyc %in% c("C", "D", "E", "F", "G")) {
+      file_name <- paste0("PFC_", cyc)
+    } else {
+      file_name <- paste0(base, "_", cyc)
+    }
+    
+    # Try to download the IDs. If the file doesn't exist for a year, it skips gracefully.
+    tryCatch({
+      df <- nhanes(file_name)
+      if (!is.null(df) && "SEQN" %in% names(df)) {
+        cycle_ids[[base]] <- df$SEQN
+      } else {
+        cycle_ids[[base]] <- character(0) # Empty if no data
+      }
+    }, error = function(e) {
+      cycle_ids[[base]] <- character(0)
+    })
+  }
+  
+  # Calculate the N x N overlap for the current cycle and ADD it to the master
+  for (i in 1:n) {
+    for (j in 1:n) {
+      var1 <- base_names[i]
+      var2 <- base_names[j]
+      
+      # Find intersection size for this cycle
+      overlap_size <- length(intersect(cycle_ids[[var1]], cycle_ids[[var2]]))
+      
+      # Add it to the running total
+      master_matrix[i, j] <- master_matrix[i, j] + overlap_size
+    }
+  }
+}
+
+# 5. Print the final cumulative matrix!
+cat("\n=== CUMULATIVE OVERLAP MATRIX (2003-2018) ===\n")
+print(master_matrix)
+```
+
