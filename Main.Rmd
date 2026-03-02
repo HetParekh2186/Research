@@ -1,0 +1,459 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+# Install packages (only need to run this once)
+install.packages("nhanesA")
+install.packages("tidyverse")
+
+# Load the libraries
+library(nhanesA)
+library(tidyverse)
+```
+```{r}
+
+```
+
+```{r}
+library(nhanesA)
+
+# 1. Define the start years for each cycle
+years <- c(2003, 2005, 2007, 2009, 2011, 2013, 2015, 2017)
+
+# 2. Pull tables for each year with a safer approach
+all_tables_list <- lapply(years, function(y) {
+  tryCatch({
+    df <- nhanesTables('LAB', y)
+    if(!is.null(df)) df$CycleYear <- y
+    return(df)
+  }, error = function(e) return(NULL))
+})
+
+# Combine into one master dataframe
+master_list <- do.call(rbind, all_tables_list)
+
+# 3. Create a regex pattern for your keywords
+# This covers heavy metals, PFAS, VOCs, Phthalates, and Pesticides
+keywords <- "Cadmium|Lead|Mercury|Perfluoro|Polyfluoro|VOCs|Volatile|Phthalate|Pesticide|Organo|Pyrethroid|PAH|Albumin|Creatinine|Perchlorate"
+
+# 4. Use grepl to filter. 
+# We search across ALL columns just in case the naming varies
+matches <- master_list[apply(master_list, 1, function(row) any(grepl(keywords, row, ignore.case = TRUE))), ]
+
+# 5. Clean output: This selects columns by index to avoid "undefined column" errors
+# Column 1 is usually File Name, Column 2 is Description
+final_list <- unique(matches[, c(1, 2, ncol(matches))]) 
+colnames(final_list) <- c("File_Name", "Description", "Year")
+
+print(final_list)
+```
+
+```{r}
+# This function loops through your 'final_list' and pulls the variable names
+# Warning: This might take a minute as it pings the CDC server for each file
+all_vars <- lapply(final_list$File_Name, function(f) {
+  tryCatch({
+    v <- nhanesTableVars('LAB', f)
+    v$File_Name <- f
+    return(v)
+  }, error = function(e) return(NULL))
+})
+
+# Combine into a searchable master variable list
+master_variables <- do.call(rbind, all_vars)
+
+# Now you can search for "Lead" or "PFOS" across ALL 134 files at once
+head(master_variables)
+```
+
+
+```{r}
+# Assuming 'final_list' is the dataframe you created earlier
+# 1. Create a "BaseName" by removing the cycle suffix (e.g., _H, _I)
+final_list$BaseName <- gsub("_[A-Z]$|_[0-9]$|_S$", "", final_list$File_Name)
+
+# 2. Group the files to see which chemicals repeat across years
+library(dplyr)
+grouped_summary <- final_list %>%
+  group_by(BaseName) %>%
+  summarise(
+    Chemical_Description = first(Description),
+    Cycles_Found = n(),
+    Years = paste(sort(unique(Year)), collapse = ", "),
+    Actual_File_Codes = paste(sort(unique(File_Name)), collapse = ", ")
+  ) %>%
+  arrange(desc(Cycles_Found))
+
+# 3. View the grouped list
+print(grouped_summary)
+
+# 4. Optional: Save this to a CSV so you can look at it in Excel
+# write.csv(grouped_summary, "NHANES_Chemical_Groups.csv", row.names = FALSE)
+```
+```{r}
+library(nhanesA)
+
+# 1. Filter your list for a specific cycle (e.g., 2017-2018 / 'J')
+# Adjust the pattern if your 'final_list' naming convention differs
+target_cycle_files <- final_list$File_Name[grepl("_J$", final_list$File_Name)]
+
+# 2. Download only the SEQN column for each file
+# We store them in a list of vectors
+id_list <- list()
+
+for (file in target_cycle_files) {
+  message("Downloading IDs for: ", file)
+  try({
+    df <- nhanes(file)
+    if ("SEQN" %in% names(df)) {
+      id_list[[file]] <- df$SEQN
+    }
+  }, silent = TRUE)
+}
+
+# 3. Initialize an empty Matrix
+n <- length(id_list)
+overlap_matrix <- matrix(0, nrow = n, ncol = n)
+colnames(overlap_matrix) <- names(id_list)
+rownames(overlap_matrix) <- names(id_list)
+
+# 4. Fill the matrix with the count of intersecting IDs
+for (i in 1:n) {
+  for (j in 1:n) {
+    overlap_matrix[i, j] <- length(intersect(id_list[[i]], id_list[[j]]))
+  }
+}
+
+# 5. View the matrix
+print(overlap_matrix)
+```
+
+```{r}
+# Create a data frame for the 2017-2018 (Cycle J) Matrix Key
+matrix_key <- data.frame(
+  Matrix_Code = c(
+    "ALB_CR_J", "PBCD_J", "IHGEM_J", "UHG_J", "VOCWB_J", 
+    "PFAS_J", "PHTHTE_J", "SSPFAS_J", "OPD_J", "PERNT_J", 
+    "UVOC_J", "SSUVOC_J", "UPHOPM_J", "SSUVCM_J", "PAH_J"
+  ),
+  Full_Description = c(
+    "Albumin & Creatinine",
+    "Cadmium, Lead, Total Mercury, Selenium, & Manganese",
+    "Mercury: Inorganic, Ethyl and Methyl",
+    "Mercury: Inorganic",
+    "Volatile Organic Compounds (VOCs) & Trihalomethanes/MTBE",
+    "Perfluoroalkyl and Polyfluoroalkyl Substances (PFAS)",
+    "Phthalates & Plasticizers Metabolites",
+    "PFAS (Surplus)",
+    "Organophosphate Insecticides - Dialkyl Phosphate Metabolites",
+    "Perchlorate, Nitrate & Thiocyanate",
+    "Volatile Organic Compound (VOC) Metabolites",
+    "Volatile Organic Compound (VOC) Metabolites II (Surplus)",
+    "Pyrethroids, Herbicides, & Organophosphorus Metabolites",
+    "VOC Metabolites: Benzene & Methylating Agent Biomarkers (Surplus)",
+    "Polyaromatic Hydrocarbons (PAHs)"
+  ),
+  Specimen_Type = c(
+    "Urine", "Blood", "Blood", "Urine", "Blood", 
+    "Serum", "Urine", "Serum", "Urine", "Urine", 
+    "Urine", "Urine", "Urine", "Urine", "Urine"
+  ),
+  stringsAsFactors = FALSE
+)
+
+# View it cleanly in RStudio's data viewer
+View(matrix_key)
+
+# Or print it out in the console
+print(matrix_key)
+```
+
+
+```{r}
+library(nhanesA)
+
+# 1. Define the cycles (C=2003 through J=2018)
+cycles <- c("C", "D", "E", "F", "G", "H", "I", "J")
+
+# 2. Define the core chemical base names
+base_names <- c("ALB_CR", "PBCD", "IHGEM", "UHG", "VOCWB", "PFAS", "PHTHTE", "OPD", "PERNT", "UVOC", "UPHOPM", "PAH")
+
+# 3. Initialize the Master Matrix with zeros
+n <- length(base_names)
+master_matrix <- matrix(0, nrow = n, ncol = n)
+rownames(master_matrix) <- base_names
+colnames(master_matrix) <- base_names
+
+# 4. Loop through every cycle and add up the overlaps
+for (cyc in cycles) {
+  message("\nProcessing Cycle: ", cyc)
+  
+  # Temporary list to hold the IDs for this specific cycle
+  cycle_ids <- list()
+  
+  for (base in base_names) {
+    # Handle the PFAS naming quirk (PFC for C-G, PFAS for H-J)
+    if (base == "PFAS" && cyc %in% c("C", "D", "E", "F", "G")) {
+      file_name <- paste0("PFC_", cyc)
+    } else {
+      file_name <- paste0(base, "_", cyc)
+    }
+    
+    # Try to download the IDs. If the file doesn't exist for a year, it skips gracefully.
+    tryCatch({
+      df <- nhanes(file_name)
+      if (!is.null(df) && "SEQN" %in% names(df)) {
+        cycle_ids[[base]] <- df$SEQN
+      } else {
+        cycle_ids[[base]] <- character(0) # Empty if no data
+      }
+    }, error = function(e) {
+      cycle_ids[[base]] <- character(0)
+    })
+  }
+  
+  # Calculate the N x N overlap for the current cycle and ADD it to the master
+  for (i in 1:n) {
+    for (j in 1:n) {
+      var1 <- base_names[i]
+      var2 <- base_names[j]
+      
+      # Find intersection size for this cycle
+      overlap_size <- length(intersect(cycle_ids[[var1]], cycle_ids[[var2]]))
+      
+      # Add it to the running total
+      master_matrix[i, j] <- master_matrix[i, j] + overlap_size
+    }
+  }
+}
+
+# 5. Print the final cumulative matrix!
+cat("\n=== CUMULATIVE OVERLAP MATRIX (2003-2018) ===\n")
+print(master_matrix)
+```
+
+
+
+```{r}
+# ==============================================================================
+# NEWER STRICTER LOGIC SET UP
+# ==============================================================================
+
+# THE SINGLE SOURCE OF TRUTH: 
+# Only exact file names explicitly listed here are allowed to be processed.
+# THE SINGLE SOURCE OF TRUTH (UPDATED WITH 2003 'L-CODES')
+# THE SINGLE SOURCE OF TRUTH (UPDATED: UPPERCASE L-CODES)
+nhanes_dict <- list(
+  
+  # 1. Albumin & Creatinine (Urine) 
+  "ALB_CR" = list("2003"="L16_C", "2005"="ALB_CR_D", "2007"="ALB_CR_E", 
+                  "2009"="ALB_CR_F", "2011"="ALB_CR_G", "2013"="ALB_CR_H", 
+                  "2015"="ALB_CR_I", "2017"="ALB_CR_J"),
+                  
+  # 2. Heavy Metals (Blood) 
+  "PBCD" = list("2003"="L06BMT_C", "2005"="PBCD_D", "2007"="PBCD_E", 
+                "2009"="PBCD_F", "2011"="PBCD_G", "2013"="PBCD_H", 
+                "2015"="PBCD_I", "2017"="PBCD_J"),
+                
+  # 3. Mercury: Speciated (Blood) -> Note: Split started after 2003
+  "IHGEM" = list("2005"="IHGEM_D", "2007"="IHGEM_E", 
+                 "2009"="IHGEM_F", "2011"="IHGEM_G", "2013"="IHGEM_H", 
+                 "2015"="IHGEM_I", "2017"="IHGEM_J"),
+                 
+  # 4. Mercury: Inorganic (Urine) 
+  "UHG" = list("2003"="L06UHM_C", "2005"="UHG_D", "2007"="UHG_E", 
+               "2009"="UHG_F", "2011"="UHG_G", "2013"="UHG_H", 
+               "2015"="UHG_I", "2017"="UHG_J"),
+               
+  # 5. VOCs (Blood) 
+  "VOCWB" = list("2003"="L04VOC_C", "2005"="VOCWB_D", "2007"="VOCWB_E", 
+                 "2009"="VOCWB_F", "2011"="VOCWB_G", "2013"="VOCWB_H", 
+                 "2015"="VOCWB_I", "2017"="VOCWB_J"),
+                 
+  # 6. PFAS (Serum) 
+  "PFAS" = list("2003"="L24PFC_C", "2005"="PFC_D", "2007"="PFC_E", 
+                "2009"="PFC_F", "2011"="PFC_G", "2013"="PFAS_H", 
+                "2015"="PFAS_I", "2017"="PFAS_J"),
+                
+  # 7. Phthalates (Urine)
+  "PHTHTE" = list("2003"="L24PH_C", "2005"="PHTHTE_D", "2007"="PHTHTE_E", 
+                  "2009"="PHTHTE_F", "2011"="PHTHTE_G", "2013"="PHTHTE_H", 
+                  "2015"="PHTHTE_I", "2017"="PHTHTE_J"),
+                  
+  # 8. PFAS (Surplus)
+  "SSPFAS" = list("2013"="SSPFAS_H", "2015"="SSPFAS_I", "2017"="SSPFAS_J"),
+  
+  # 9. Organophosphate Insecticides 
+  "OPD" = list("2003"="L26OPP_C", "2005"="OPD_D", "2007"="OPD_E", 
+               "2009"="OPD_F", "2011"="OPD_G", "2013"="OPD_H", 
+               "2015"="OPD_I", "2017"="OPD_J"),
+               
+  # 10. Perchlorate, Nitrate & Thiocyanate
+  "PERNT" = list("2005"="PERNT_D", "2007"="PERNT_E", "2009"="PERNT_F", 
+                 "2011"="PERNT_G", "2013"="PERNT_H", "2015"="PERNT_I", 
+                 "2017"="PERNT_J"),
+                 
+  # 11. VOC Metabolites (Urine)
+  "UVOC" = list("2005"="UVOC_D", "2007"="UVOC_E", "2009"="UVOC_F", 
+                "2011"="UVOC_G", "2013"="UVOC_H", "2015"="UVOC_I", 
+                "2017"="UVOC_J"),
+                
+  # 12. VOC Metabolites II (Surplus)
+  "SSUVOC" = list("2017"="SSUVOC_J"),
+  
+  # 13. Pyrethroids, Herbicides, & Organophosphorus Metabolites
+  "UPHOPM" = list("2007"="UPHOPM_E", "2009"="UPHOPM_F", "2011"="UPHOPM_G", 
+                  "2013"="UPHOPM_H", "2015"="UPHOPM_I", "2017"="UPHOPM_J"),
+                  
+  # 14. VOC Metabolites: Benzene & Methylating Agents (Surplus)
+  "SSUVCM" = list("2017"="SSUVCM_J"),
+  
+  # 15. Polyaromatic Hydrocarbons (PAHs) 
+  "PAH" = list("2003"="L31PAH_C", "2005"="PAH_D", "2007"="PAH_E", 
+               "2009"="PAH_F", "2011"="PAH_G", "2013"="PAH_H", 
+               "2015"="PAH_I", "2017"="PAH_J")
+)
+#The Defensive Getter Function (FIXED)
+get_safe_filename <- function(chemical_key, year_key) {
+  
+  # 1. FORCE character conversion to prevent R from treating it as a numeric index
+  year_key <- as.character(year_key)
+  
+  # Assertion 1: Is the chemical in our dictionary?
+  if (!chemical_key %in% names(nhanes_dict)) {
+    warning(sprintf("Chemical '%s' not in whitelist. Skipping.", chemical_key))
+    return(NA)
+  }
+  
+  # Assertion 2: Was this chemical surveyed in this specific year?
+  if (!year_key %in% names(nhanes_dict[[chemical_key]])) {
+    # Returns NA cleanly for expected missing gaps (like surplus in 2003)
+    return(NA)
+  }
+  
+  # Return the explicitly matched file name
+  return(nhanes_dict[[chemical_key]][[year_key]])
+}
+```
+
+```{r}
+# ==============================================================================
+# NEWER STRICTER LOGIC: Defensively Programmed Cumulative Matrix (2003-2018)
+# Relies ONLY on the hardcoded dictionary rather than trying to guess suffixes.
+# ==============================================================================
+library(nhanesA)
+# 1. Dynamically pull chemicals and target years
+dict_chemicals <- names(nhanes_dict)
+dict_years <- c("2003", "2005", "2007", "2009", "2011", "2013", "2015", "2017")
+n_strict <- length(dict_chemicals)
+
+# 2. Initialize the master matrix
+strict_master_matrix <- matrix(0, nrow = n_strict, ncol = n_strict)
+rownames(strict_master_matrix) <- dict_chemicals
+colnames(strict_master_matrix) <- dict_chemicals
+
+# 3. Loop through years, relying ONLY on the dictionary for file names
+for (yr in dict_years) {
+  message("\nProcessing Year (Strict Logic): ", yr)
+  cycle_ids <- list()
+  
+  for (chem in dict_chemicals) {
+    file_name <- get_safe_filename(chem, yr)
+    
+    # If file exists in the dictionary, try downloading
+    if (!is.na(file_name)) {
+      
+      # Throttle requests to prevent the CDC server from rejecting the connection
+      Sys.sleep(0.5)
+      
+      tryCatch({
+        df <- nhanes(file_name)
+        if (!is.null(df) && "SEQN" %in% names(df)) {
+          cycle_ids[[chem]] <- df$SEQN
+        } else {
+          cycle_ids[[chem]] <- character(0)
+        }
+      }, error = function(e) {
+        # STOP SILENT FAILURES: Print exactly why the file was skipped
+        message(sprintf(" -> ERROR downloading %s: %s", file_name, e$message))
+        cycle_ids[[chem]] <- character(0)
+      })
+      
+    } else {
+      # Data explicitly doesn't exist for this year (e.g., Surplus in 2005)
+      cycle_ids[[chem]] <- character(0)
+    }
+  }
+  
+  # Calculate overlaps for the current cycle and add to the running total
+  for (i in 1:n_strict) {
+    for (j in 1:n_strict) {
+      c1 <- dict_chemicals[i]
+      c2 <- dict_chemicals[j]
+      overlap_size <- length(intersect(cycle_ids[[c1]], cycle_ids[[c2]]))
+      strict_master_matrix[i, j] <- strict_master_matrix[i, j] + overlap_size
+    }
+  }
+}
+
+# 4. Print the final result
+cat("\n=== STRICT LOGIC CUMULATIVE OVERLAP MATRIX (2003-2018) ===\n")
+print(strict_master_matrix)
+```
+
+```{r}
+# 1. Convert the matrix into a flat table
+overlap_df <- as.data.frame(as.table(strict_master_matrix))
+colnames(overlap_df) <- c("Chemical_1", "Chemical_2", "Overlap_N")
+
+# 2. Filter out the diagonal (where Chemical 1 matches Chemical 2)
+# and remove duplicates (e.g., PFAS/PAH is the same as PAH/PFAS)
+library(dplyr)
+clean_overlaps <- overlap_df %>%
+  filter(Chemical_1 != Chemical_2) %>%
+  mutate(
+    # Sort the names alphabetically so we can easily remove duplicates
+    Pair = paste(pmin(as.character(Chemical_1), as.character(Chemical_2)), 
+                 pmax(as.character(Chemical_1), as.character(Chemical_2)), 
+                 sep = " & ")
+  ) %>%
+  distinct(Pair, .keep_all = TRUE) %>%
+  select(Pair, Overlap_N) %>%
+  arrange(desc(Overlap_N))
+
+# 3. View the Top 15 Best Overlaps for your study
+cat("\n=== TOP 15 MULTI-POLLUTANT COMBINATIONS (2003-2018) ===\n")
+print(head(clean_overlaps, 15))
+```
+
+```{r} 
+# ==============================================================================
+# FINDING THE TOP CHEMICAL PAIRS (2003-2018)
+# ==============================================================================
+
+# 1. Convert the matrix into a flat table
+overlap_df <- as.data.frame(as.table(strict_master_matrix))
+colnames(overlap_df) <- c("Chemical_1", "Chemical_2", "Overlap_N")
+
+# 2. Filter out the diagonal (where Chemical 1 matches Chemical 2)
+# and remove duplicates (e.g., PFAS/PAH is the same as PAH/PFAS)
+library(dplyr)
+clean_overlaps <- overlap_df %>%
+  filter(Chemical_1 != Chemical_2) %>%
+  mutate(
+    # Sort the names alphabetically so we can easily remove duplicates
+    Pair = paste(pmin(as.character(Chemical_1), as.character(Chemical_2)), 
+                 pmax(as.character(Chemical_1), as.character(Chemical_2)), 
+                 sep = " & ")
+  ) %>%
+  distinct(Pair, .keep_all = TRUE) %>%
+  select(Pair, Overlap_N) %>%
+  arrange(desc(Overlap_N))
+
+# 3. View the Top 15 Best Overlaps for your study
+cat("\n=== TOP 15 MULTI-POLLUTANT COMBINATIONS (2003-2018) ===\n")
+print(head(clean_overlaps, 15))
+```
+
