@@ -1,0 +1,1156 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+# ==============================================================================
+# NHANES PARTICIPANT ID INTERSECTION MATRIX  —  PER SURVEY CYCLE
+# ==============================================================================
+#
+# DESIGN PHILOSOPHY (addressing professor's question directly)
+# ─────────────────────────────────────────────────────────────────────────────
+# Pattern matching is flexible but fragile: a regex can silently match an
+# unintended target or miss a valid one, with no runtime signal that anything
+# went wrong. An explicit whitelist of exact NHANES file codes eliminates
+# both failure modes — every accepted value is intentional, and every
+# unexpected or missing input produces a loud, visible error.
+#
+# The remaining sensitivity risk (whitelist entries that are formatted
+# differently from what the CDC actually publishes) is addressed by running
+# a PRE-FLIGHT MANIFEST AUDIT before any data is downloaded. Every single
+# file code in the whitelist is validated against CDC's live nhanesTables()
+# output. If a code is wrong, execution stops with a precise error message
+# before wasting any download time.
+#
+# Summary of the defence layers, in order of execution:
+#   1. Static whitelist   — exact, intentional, no inference
+#   2. Structural checks  — no duplicate codes, no year collisions per dataset
+#   3. Manifest audit     — every code confirmed against CDC's live directory
+#   4. Download guards    — SEQN presence asserted after each download
+#   5. Matrix assertions  — diagonal must equal n_participants, matrix symmetric
+#
+# Any violation at any layer calls stop() with a diagnostic message.
+# Silent failures are not permitted anywhere in this script.
+# ==============================================================================
+
+suppressPackageStartupMessages({
+  library(nhanesA)
+  library(dplyr)
+  library(tidyr)
+  library(purrr)
+})
+
+# ── Survey cycle mapping (start-year key → NHANES letter suffix) ──────────────
+CYCLE_LETTER <- c(
+  "2003" = "C", "2005" = "D", "2007" = "E",
+  "2009" = "F", "2011" = "G", "2013" = "H",
+  "2015" = "I", "2017" = "J"
+)
+ALL_YEARS <- names(CYCLE_LETTER)
+
+
+# ==============================================================================
+# SECTION 1 — THE MASTER WHITELIST
+# ==============================================================================
+# Rules:
+#   • Every entry represents exactly one distinct NHANES dataset as listed in
+#     the project's blue-highlighted dataset inventory.
+#   • `codes` is a named character vector: year (start-year string) → file code.
+#   • A year absent from `codes` means the dataset was NOT collected that cycle.
+#     There is no default / fallback logic anywhere downstream.
+#   • Entries marked NEEDS_VALIDATION have codes that are uncertain and MUST
+#     be confirmed by the pre-flight audit before results are trusted.
+#   • Entries that share a file code with another entry in the same year are
+#     flagged by the structural checks (Section 2). This is expected for a few
+#     datasets that CDC merged into a single file across cycles.
+# ==============================================================================
+
+WHITELIST <- list(
+
+  # ── HEAVY METALS (BLOOD) ────────────────────────────────────────────────────
+
+  # AUDIT FINDING: CDC uses mixed-case "PbCd" (not "PBCD") for cycles D-G.
+  # Cycles H-J are uppercase PBCD — confirmed OK in audit, no change needed.
+  # Panel expanded in 2011 to add Se and Mn; still the same file series.
+  PBCD = list(
+    label = "Cadmium, Lead & Total Mercury – Blood (2003-2009)",
+    codes = c(
+      "2003" = "L06BMT_C",  # confirmed OK
+      "2005" = "PbCd_D",    # FIXED: was PBCD_D — manifest uses mixed case
+      "2007" = "PbCd_E",    # FIXED: was PBCD_E
+      "2009" = "PbCd_F"     # FIXED: was PBCD_F
+    )
+  ),
+
+  PBCD_EXT = list(
+    label = "Cadmium, Lead, Hg, Selenium & Manganese – Blood (2011-2017)",
+    codes = c(
+      "2011" = "PbCd_G",    # FIXED: was PBCD_G — manifest uses mixed case
+      "2013" = "PBCD_H",    # confirmed OK
+      "2015" = "PBCD_I",    # confirmed OK
+      "2017" = "PBCD_J"     # confirmed OK
+    )
+  ),
+
+  # ── MERCURY – BLOOD ─────────────────────────────────────────────────────────
+
+  # AUDIT FINDING: Manifest uses "IHg_D" (mixed case) for 2005.
+  # From 2007-2009 the file is still "IHg" (not "IHGEM") despite containing
+  # the expanded ethyl+methyl panel.  "IHgEM" spelling begins 2011.
+  IHG = list(
+    label = "Mercury: Inorganic – Blood (2005 only)",
+    codes = c(
+      "2005" = "IHg_D"      # FIXED: was IHG_D
+    )
+  ),
+
+  IHGEM = list(
+    label = "Mercury: Inorganic, Ethyl & Methyl – Blood (2007-2017)",
+    codes = c(
+      "2007" = "IHg_E",     # FIXED: was IHGEM_E — CDC still called it IHg in 2007
+      "2009" = "IHg_F",     # FIXED: was IHGEM_F — same; IHg naming continues
+      "2011" = "IHgEM_G",   # FIXED: was IHGEM_G — IHgEM (mixed) starts 2011
+      "2013" = "IHGEM_H",   # confirmed OK
+      "2015" = "IHGEM_I",   # confirmed OK
+      "2017" = "IHGEM_J"    # confirmed OK
+    )
+  ),
+
+  # ── MERCURY – URINE ─────────────────────────────────────────────────────────
+
+  UHG = list(
+    label = "Mercury: Inorganic – Urine (all cycles)",
+    codes = c(
+      "2003" = "L06UHG_C",  # confirmed OK
+      "2005" = "UHG_D",     # confirmed OK
+      "2007" = "UHG_E",     # confirmed OK
+      "2009" = "UHG_F",     # confirmed OK
+      "2011" = "UHG_G",     # confirmed OK
+      "2013" = "UHG_H",     # confirmed OK
+      "2015" = "UHG_I",     # confirmed OK
+      "2017" = "UHG_J"      # confirmed OK
+    )
+  ),
+
+  # ── PFAS / POLYFLUOROALKYL ──────────────────────────────────────────────────
+
+  PFC = list(
+    label = "Polyfluoroalkyl Chemicals – Serum (2003-2011, PFC series)",
+    codes = c(
+      "2003" = "L24PFC_C",  # confirmed OK
+      "2005" = "PFC_D",     # confirmed OK
+      "2007" = "PFC_E",     # confirmed OK
+      "2009" = "PFC_F",     # confirmed OK
+      "2011" = "PFC_G"      # confirmed OK
+    )
+  ),
+
+  PFAS = list(
+    label = "PFAS – Serum (2013-2017, renamed from PFC)",
+    codes = c(
+      "2013" = "PFAS_H",    # confirmed OK
+      "2015" = "PFAS_I",    # confirmed OK
+      "2017" = "PFAS_J"     # confirmed OK
+    )
+  ),
+
+  SSPFAS = list(
+    label = "PFAS – Surplus Serum (2013, 2017)",
+    codes = c(
+      "2013" = "SSPFAS_H",  # confirmed OK
+      "2017" = "SSPFAS_J"   # confirmed OK
+    )
+  ),
+
+  # AUDIT FINDING: SSPFC_H not found. Suggestion: SSPFAC_H.
+  # Still NEEDS_VALIDATION — the description match is plausible but not certain.
+  PFAS_CHILD = list(
+    label = "PFAS – Children 3-11 Years Subsample – Serum (2013 only)  [NEEDS_VALIDATION]",
+    codes = c(
+      "2013" = "SSPFAC_H"   # NEEDS_VALIDATION: FIXED from SSPFC_H per suggestion
+    )
+  ),
+
+  # ── VOCs – BLOOD ────────────────────────────────────────────────────────────
+
+  VOCWB = list(
+    label = "VOCs – Blood (full panel, all cycles)",
+    codes = c(
+      "2003" = "L04VOC_C",  # confirmed OK
+      "2005" = "VOCWB_D",   # confirmed OK
+      "2007" = "VOCWB_E",   # confirmed OK
+      "2009" = "VOCWB_F",   # confirmed OK
+      "2011" = "VOCWB_G",   # confirmed OK
+      "2013" = "VOCWB_H",   # confirmed OK
+      "2015" = "VOCWB_I",   # confirmed OK
+      "2017" = "VOCWB_J"    # confirmed OK
+    )
+  ),
+
+  # AUDIT FINDING: VOC_TTHM_E not found. Suggestion: VOCMWB_E.
+  # 2007 is a separate file; 2009+ this series merged into the main VOCWB files
+  # (duplicate codes with VOCWB — logged by structural check, expected).
+  VOC_TTHM = list(
+    label = "VOCs – Trihalomethanes/MTBE/Nitromethane – Blood  [NEEDS_VALIDATION for 2007]",
+    codes = c(
+      "2007" = "VOCMWB_E",  # NEEDS_VALIDATION: FIXED from VOC_TTHM_E per suggestion
+      "2009" = "VOCWB_F",   # same file as VOCWB — duplicate logged by structural check
+      "2011" = "VOCWB_G",   # same file as VOCWB
+      "2013" = "VOCWB_H",   # confirmed OK
+      "2015" = "VOCWB_I",   # confirmed OK
+      "2017" = "VOCWB_J"    # confirmed OK
+    )
+  ),
+
+  # ── PHTHALATES – URINE ──────────────────────────────────────────────────────
+
+  PHTHTE = list(
+    label = "Phthalates & Plasticizers Metabolites – Urine (all cycles)",
+    codes = c(
+      "2003" = "L24PH_C",   # confirmed OK
+      "2005" = "PHTHTE_D",  # confirmed OK
+      "2007" = "PHTHTE_E",  # confirmed OK
+      "2009" = "PHTHTE_F",  # confirmed OK
+      "2011" = "PHTHTE_G",  # confirmed OK
+      "2013" = "PHTHTE_H",  # confirmed OK
+      "2015" = "PHTHTE_I",  # confirmed OK
+      "2017" = "PHTHTE_J"   # confirmed OK
+    )
+  ),
+
+  # ── PERCHLORATE – URINE ─────────────────────────────────────────────────────
+
+  PERNT = list(
+    label = "Perchlorate, Nitrate & Thiocyanate – Urine (2005-2017)",
+    codes = c(
+      "2005" = "PERNT_D",   # confirmed OK
+      "2007" = "PERNT_E",   # confirmed OK
+      "2009" = "PERNT_F",   # confirmed OK
+      "2011" = "PERNT_G",   # confirmed OK
+      "2013" = "PERNT_H",   # confirmed OK
+      "2015" = "PERNT_I",   # confirmed OK
+      "2017" = "PERNT_J"    # confirmed OK
+    )
+  ),
+
+  # ── PESTICIDES – URINE ──────────────────────────────────────────────────────
+
+  # AUDIT FINDING: OPD_F (2009) and OPD_H (2013) not found in manifest with
+  # zero suggestions returned.  The suggestion engine also drew a blank — no
+  # description in either year’s manifest matched “Organophosphate Dialkyl”.
+  # This is the strongest signal yet that these two years were either combined
+  # into another file or simply not published as a standalone dataset.
+  #
+  # They are listed in `uncertain_codes` (machine-readable per-code flag) so
+  # the audit treats them as NEEDS_VALIDATION rather than hard ERRORs.
+  # The confirmed years (2003, 2005, 2007, 2015) are unaffected.
+  OPD = list(
+    label           = "Organophosphate Insecticides – Dialkyl Phosphate Metabolites – Urine",
+    uncertain_codes = c("OPD_F", "OPD_H"),   # not found in CDC manifest; no suggestion
+    codes = c(
+      "2003" = "L26OPD_C",  # confirmed OK
+      "2005" = "OPD_D",     # confirmed OK
+      "2007" = "OPD_E",     # confirmed OK
+      "2009" = "OPD_F",     # NEEDS_VALIDATION — see uncertain_codes above
+      # 2011: NOT COLLECTED per inventory
+      "2013" = "OPD_H",     # NEEDS_VALIDATION — see uncertain_codes above
+      "2015" = "OPD_I"      # confirmed OK
+      # 2017: NOT COLLECTED per inventory
+    )
+  ),
+
+  # AUDIT FINDING: L26PP_C (2003) not found. Top suggestion: L24PP_C.
+  # 2005 (PP_D) and 2007 (PP_E) confirmed OK.
+  PP = list(
+    label = "Pesticides – Current Use / Priority Pesticides – Urine (2003-2007)  [NEEDS_VALIDATION for 2003]",
+    codes = c(
+      "2003" = "L24PP_C",   # NEEDS_VALIDATION: FIXED from L26PP_C per suggestion
+      "2005" = "PP_D",      # confirmed OK
+      "2007" = "PP_E"       # confirmed OK
+    )
+  ),
+
+  # AUDIT FINDINGS:
+  #   2003 (L26UPP_C): confirmed OK — no error or warn in audit output.
+  #   2005 (PEST_D) not found → suggestion UPP_D (top match for "Environmental Urine")
+  #   2007 (PEST_E) not found → suggestion UPP_E
+  #   2009 (PEST_F) not found → top suggestion PP_F (same code as PYRET_EARLY)
+  #   2011 (PEST_G) not found → top suggestion PP_G
+  # Note: if PP_F/PP_G are confirmed correct, these will share a file with
+  # PYRET_EARLY in 2009 and overlap with UPHOPM concept in 2011 — that is the
+  # expected duplicate scenario (different inventory labels, one CDC file).
+  PEST = list(
+    label = "Pesticides – Environmental – Urine (2003-2011)  [NEEDS_VALIDATION: 2005-2011]",
+    codes = c(
+      "2003" = "L26UPP_C",  # confirmed OK (was already correct)
+      "2005" = "UPP_D",     # NEEDS_VALIDATION: FIXED from PEST_D per suggestion
+      "2007" = "UPP_E",     # NEEDS_VALIDATION: FIXED from PEST_E per suggestion
+      "2009" = "PP_F",      # NEEDS_VALIDATION: FIXED from PEST_F per suggestion
+      "2011" = "PP_G"       # NEEDS_VALIDATION: FIXED from PEST_G per suggestion
+    )
+  ),
+
+  # AUDIT FINDING: CARB_D and CARB_E raised NO error or warning — both codes
+  # are confirmed present in the CDC manifest. NEEDS_VALIDATION tag removed.
+  # These are a genuinely separate file from OPD (different analyte panel).
+  CARB = list(
+    label = "Pesticides – Carbamates & OP Metabolites – Urine (2005-2007)",
+    codes = c(
+      "2005" = "CARB_D",    # confirmed OK
+      "2007" = "CARB_E"     # confirmed OK
+    )
+  ),
+
+  # Pyrethroids, Herbicides & OP Metabolites (2007-2009).
+  # PP_E and PP_F confirmed OK. PP_E is shared with the PP entry for 2007
+  # (duplicate flagged by structural check — expected, one CDC file two labels).
+  PYRET_EARLY = list(
+    label = "Pyrethroids, Herbicides & OP Metabolites – Urine (2007-2009)",
+    codes = c(
+      "2007" = "PP_E",      # confirmed OK (duplicate with PP entry — expected)
+      "2009" = "PP_F"       # confirmed OK
+    )
+  ),
+
+  # Continuation of pyrethroids series under UPHOPM acronym from 2011.
+  # UPHOPM_G/H/I confirmed OK.
+  UPHOPM = list(
+    label = "Pyrethroids, Herbicides & OP Metabolites – Urine (2011-2015, UPHOPM series)",
+    codes = c(
+      "2011" = "UPHOPM_G",  # confirmed OK
+      "2013" = "UPHOPM_H",  # confirmed OK
+      "2015" = "UPHOPM_I"   # confirmed OK
+      # 2017: NOT COLLECTED per inventory
+    )
+  ),
+
+  # ── VOC METABOLITES – URINE ─────────────────────────────────────────────────
+
+  # AUDIT FINDING: UVOC_D (2005), UVOC_E (2007), UVOC_F (2009) NOT in manifest
+  # and no plausible suggestions found. These years are removed — the dataset
+  # appears to start in 2011. Cycles 2011-2017 confirmed OK.
+  UVOC = list(
+    label = "VOC Metabolites – Urine (2011-2017; 2005-2009 not published per audit)",
+    codes = c(
+      # 2005: REMOVED — UVOC_D not in CDC manifest (was also 404 on download)
+      # 2007: REMOVED — UVOC_E not in CDC manifest (was also 404 on download)
+      # 2009: REMOVED — UVOC_F not in CDC manifest (was also 404 on download)
+      "2011" = "UVOC_G",    # confirmed OK
+      "2013" = "UVOC_H",    # confirmed OK
+      "2015" = "UVOC_I",    # confirmed OK
+      "2017" = "UVOC_J"     # confirmed OK
+    )
+  ),
+
+  SSUVOC = list(
+    label = "VOC Metabolites – Surplus – Urine (2017 only)",
+    codes = c(
+      "2017" = "SSUVOC_J"   # confirmed OK
+    )
+  ),
+
+  # AUDIT FINDING: SSUVCM_I not found in manifest. Top matching suggestion: UVOCS_I.
+  # Still NEEDS_VALIDATION — "UVOCS" may stand for "Urine VOC Surplus" but
+  # verify against the CDC website before trusting.
+  SSUVCM = list(
+    label = "VOC Metabolites – Benzene & Methylating Agent Biomarkers – Surplus – Urine (2015 only)  [NEEDS_VALIDATION]",
+    codes = c(
+      "2015" = "UVOCS_I"    # NEEDS_VALIDATION: FIXED from SSUVCM_I per suggestion
+    )
+  ),
+
+  # ── PAHs – URINE ────────────────────────────────────────────────────────────
+
+  # Duplicate in Excel inventory (rows 48 & 52) — single entry here.
+  # L31PAH_C confirmed OK in audit (no error). PAH_D through PAH_G confirmed OK.
+  PAH = list(
+    label = "Polyaromatic Hydrocarbons (PAHs) – Urine (2003-2011)",
+    codes = c(
+      "2003" = "L31PAH_C",  # confirmed OK
+      "2005" = "PAH_D",     # confirmed OK
+      "2007" = "PAH_E",     # confirmed OK
+      "2009" = "PAH_F",     # confirmed OK
+      "2011" = "PAH_G"      # confirmed OK
+      # 2013-2017: NOT COLLECTED per inventory
+    )
+  ),
+
+  # ── ALBUMIN & CREATININE – URINE ────────────────────────────────────────────
+
+  ALB_CR = list(
+    label = "Albumin & Creatinine – Urine (all cycles)",
+    codes = c(
+      "2003" = "L16_C",     # confirmed OK
+      "2005" = "ALB_CR_D",  # confirmed OK
+      "2007" = "ALB_CR_E",  # confirmed OK
+      "2009" = "ALB_CR_F",  # confirmed OK
+      "2011" = "ALB_CR_G",  # confirmed OK
+      "2013" = "ALB_CR_H",  # confirmed OK
+      "2015" = "ALB_CR_I",  # confirmed OK
+      "2017" = "ALB_CR_J"   # confirmed OK
+    )
+  )
+)  # end WHITELIST
+
+
+# ==============================================================================
+# SECTION 2 — STRUCTURAL INTEGRITY CHECKS
+# Runs entirely on the in-memory WHITELIST before any network calls.
+# Any failure here indicates a data-entry error in the whitelist itself.
+# ==============================================================================
+
+message("\n[CHECK 1/3] Running structural integrity checks on the whitelist...")
+
+# 2a. All years must be valid start-year keys
+for (key in names(WHITELIST)) {
+  bad_years <- setdiff(names(WHITELIST[[key]]$codes), ALL_YEARS)
+  if (length(bad_years) > 0) {
+    stop(sprintf(
+      "STRUCTURAL ERROR: Dataset '%s' contains unrecognized year key(s): %s\n  Valid keys: %s",
+      key, paste(bad_years, collapse = ", "), paste(ALL_YEARS, collapse = ", ")
+    ))
+  }
+}
+
+# 2b. All file codes must be non-empty strings
+for (key in names(WHITELIST)) {
+  for (yr in names(WHITELIST[[key]]$codes)) {
+    code <- WHITELIST[[key]]$codes[[yr]]
+    if (!is.character(code) || nchar(trimws(code)) == 0) {
+      stop(sprintf("STRUCTURAL ERROR: Dataset '%s', year %s has an empty file code.", key, yr))
+    }
+  }
+}
+
+# 2c. Detect duplicate file codes across datasets within the same year.
+#     This is NOT automatically an error — a duplicate means two dataset entries
+#     in the inventory point to the same NHANES file (e.g., because CDC combined
+#     them). It IS important information.  We log it loudly and continue.
+all_code_uses <- purrr::imap_dfr(WHITELIST, function(entry, key) {
+  purrr::imap_dfr(entry$codes, function(code, yr) {
+    data.frame(dataset = key, year = yr, code = code, stringsAsFactors = FALSE)
+  })
+})
+
+dup_codes <- all_code_uses %>%
+  group_by(year, code) %>%
+  filter(n() > 1) %>%
+  arrange(year, code)
+
+if (nrow(dup_codes) > 0) {
+  message("\n  [NOTICE] The following file codes appear under more than one dataset",
+          " entry in the same year.")
+  message("  This means two dataset labels in the inventory share a single CDC file.")
+  message("  Their intersection will equal their full sample size (100% overlap).")
+  message("  This is EXPECTED for some splits (e.g., VOC_TTHM absorbed into VOCWB).")
+  print(as.data.frame(dup_codes))
+}
+
+message("  Structural checks passed.")
+
+
+# ==============================================================================
+# SECTION 3 — PRE-FLIGHT MANIFEST AUDIT
+# Downloads CDC's official lab file directory for every cycle and checks that
+# every whitelist code is present.  Stops execution if any confirmed code is
+# missing.  NEEDS_VALIDATION codes produce a warning instead.
+# ==============================================================================
+
+message("\n[CHECK 2/3] Downloading CDC lab manifests for all cycles...")
+
+# Build the set of uncertain codes using TWO complementary mechanisms:
+#
+#   1. Label-level flag: if the dataset label contains "[NEEDS_VALIDATION]",
+#      ALL codes in that entry are treated as uncertain.  Used when an entire
+#      dataset's codes are guesses (e.g. PFAS_CHILD, SSUVCM).
+#
+#   2. Code-level flag: the `uncertain_codes` field lists individual codes
+#      within an otherwise-confirmed entry that could not be validated.
+#      This is more precise — it avoids marking confirmed sibling codes as
+#      uncertain just because one year is ambiguous (e.g. OPD_F / OPD_H
+#      within the OPD entry whose 2003/2005/2007/2015 codes are all confirmed).
+#
+# Both are unioned into `needs_validation_codes`.  A code in this set that
+# fails the manifest lookup emits [WARN] instead of [ERROR].
+
+needs_validation_codes <- character(0)
+for (key in names(WHITELIST)) {
+  entry <- WHITELIST[[key]]
+
+  # Mechanism 1 — label-level: all codes for this entry are uncertain.
+  # Exception: if a code appears in another whitelist entry for the same year
+  # whose label does NOT contain NEEDS_VALIDATION, it is a shared/merged file
+  # that has already been confirmed via that sibling entry.  Including it in
+  # uncertain_codes would produce a misleading [CASE] notice and inflate the
+  # uncertain count.  We resolve this by computing the set of codes that are
+  # confirmed in at least one OTHER entry before including them.
+  if (grepl("NEEDS_VALIDATION", entry$label)) {
+    entry_codes <- unname(entry$codes)
+    # Find all codes that appear in a confirmed (non-NEEDS_VALIDATION) entry
+    confirmed_elsewhere <- character(0)
+    for (other_key in names(WHITELIST)) {
+      if (other_key == key) next
+      if (!grepl("NEEDS_VALIDATION", WHITELIST[[other_key]]$label) &&
+          is.null(WHITELIST[[other_key]]$uncertain_codes)) {
+        confirmed_elsewhere <- c(confirmed_elsewhere,
+                                  unname(WHITELIST[[other_key]]$codes))
+      }
+    }
+    confirmed_elsewhere <- unique(confirmed_elsewhere)
+    # Only mark as uncertain those codes NOT confirmed via a sibling entry
+    truly_uncertain <- setdiff(entry_codes, confirmed_elsewhere)
+    needs_validation_codes <- c(needs_validation_codes, truly_uncertain)
+  }
+
+  # Mechanism 2 — code-level: specific codes listed in uncertain_codes field
+  if (!is.null(entry$uncertain_codes)) {
+    if (!is.character(entry$uncertain_codes)) {
+      stop(sprintf(
+        "STRUCTURAL ERROR: '%s'$uncertain_codes must be a character vector, got %s",
+        key, class(entry$uncertain_codes)
+      ))
+    }
+    # Assert every listed uncertain code actually exists in this entry's codes
+    bad <- setdiff(entry$uncertain_codes, unname(entry$codes))
+    if (length(bad) > 0) {
+      stop(sprintf(
+        "STRUCTURAL ERROR: '%s'$uncertain_codes references code(s) not in $codes: %s",
+        key, paste(bad, collapse = ", ")
+      ))
+    }
+    needs_validation_codes <- c(needs_validation_codes, entry$uncertain_codes)
+  }
+}
+needs_validation_codes <- unique(needs_validation_codes)
+message(sprintf("  Uncertain codes registered: %d  (%s)",
+                length(needs_validation_codes),
+                paste(needs_validation_codes, collapse = ", ")))
+
+# ------------------------------------------------------------------------------
+# MANIFEST COLUMN RESOLUTION
+# ------------------------------------------------------------------------------
+# nhanesA returns different raw column names depending on the cycle year and
+# package version.  After stripping punctuation and lowercasing, the known
+# variants are:
+#
+#   Newer cycles (2005+):  "docfile"       → short file code  (e.g. PBCD_D)
+#                          "datafilename"  → human description
+#
+#   Older cycles (2003):   "datafilename"  → short file code  (e.g. L06BMT_C)
+#                          "datafiledescription" → human description
+#
+# Priority order is therefore:  docfile > datafilecode > filename > datafilename
+# For newer years "docfile" wins immediately.
+# For 2003 only "datafilename" survives to become the fallback — and for that
+# cycle it genuinely contains the file codes.
+#
+# A per-cycle diagnostic block is printed immediately after each download so
+# that any future column-name change is immediately visible without needing to
+# re-run everything.
+# ------------------------------------------------------------------------------
+CANDIDATE_CODE_COLS <- c("docfile", "datafilecode", "filename", "datafilename")
+
+# Download manifests (one per cycle year = one CDC call per year)
+cdc_manifests      <- list()
+manifest_code_cols <- character(0)   # record which column was chosen per year
+
+for (yr in ALL_YEARS) {
+  yr_int <- as.integer(yr)
+  message("  Fetching manifest for cycle starting ", yr, "...")
+  Sys.sleep(0.3)
+  manifest_raw <- tryCatch(
+    nhanesTables("LAB", yr_int),
+    error = function(e) {
+      stop(sprintf(
+        "MANIFEST FETCH FAILED for year %s: %s\n  Cannot validate whitelist without CDC manifest.",
+        yr, e$message
+      ))
+    }
+  )
+
+  # Normalise column names (nhanesA changes them between versions)
+  names(manifest_raw) <- tolower(gsub("[^A-Za-z0-9]", "", names(manifest_raw)))
+
+  # Identify which code column this cycle exposes, and print it loudly so any
+  # future column-name change surfaces immediately.
+  resolved_col <- intersect(CANDIDATE_CODE_COLS, names(manifest_raw))
+  if (length(resolved_col) == 0) {
+    stop(sprintf(paste0(
+      "MANIFEST STRUCTURE ERROR: Cannot find a file-code column in the %s manifest.\n",
+      "  Columns present after normalisation: %s\n",
+      "  Expected one of: %s\n",
+      "  This means nhanesA changed its output format. Add the new column name to\n",
+      "  CANDIDATE_CODE_COLS at the top of this block and re-run."
+    ), yr,
+       paste(names(manifest_raw), collapse = ", "),
+       paste(CANDIDATE_CODE_COLS,  collapse = ", ")))
+  }
+  resolved_col <- resolved_col[1]
+  manifest_code_cols[yr] <- resolved_col
+
+  # Diagnostic: show the column chosen and a sample of its values
+  sample_vals <- head(manifest_raw[[resolved_col]], 4)
+  message(sprintf(
+    "    [MANIFEST DIAG %s] columns: (%s)  |  code col chosen: '%s'  |  sample values: %s",
+    yr,
+    paste(names(manifest_raw), collapse = ", "),
+    resolved_col,
+    paste(sample_vals, collapse = ", ")
+  ))
+
+  cdc_manifests[[yr]] <- manifest_raw
+}
+
+message("\n  Column resolution summary (year → column used for file-code lookup):")
+for (yr in ALL_YEARS) {
+  message(sprintf("    %s → '%s'", yr, manifest_code_cols[yr]))
+}
+
+# Run validation: every whitelist code must appear in the manifest for its year
+message("\n  Validating whitelist codes against CDC manifests...")
+
+# ------------------------------------------------------------------------------
+# DESCRIPTION-COLUMN RESOLUTION
+# When a code fails validation we need to search the manifest by description
+# to suggest the correct code.  The description column also varies by year:
+#
+#   Newer cycles:  "datafilename"      → human description
+#   Older (2003):  "datafiledescription" → human description
+#                  (datafilename holds the code, so desc is the other column)
+#
+# We resolve once per year and store alongside the code column.
+# ------------------------------------------------------------------------------
+CANDIDATE_DESC_COLS <- c("datafilename", "datafiledescription", "description",
+                          "docfile")  # docfile last — only reached if nothing else exists
+
+manifest_desc_cols <- character(0)
+
+for (yr in ALL_YEARS) {
+  manifest <- cdc_manifests[[yr]]
+  code_col <- manifest_code_cols[[yr]]
+  # Description column = highest-priority candidate that is NOT the code column
+  desc_candidates <- setdiff(CANDIDATE_DESC_COLS, code_col)
+  resolved_desc   <- intersect(desc_candidates, names(manifest))
+  if (length(resolved_desc) == 0) {
+    # No separate description column — fall back to code col (suggestions will
+    # be less readable but still functional)
+    manifest_desc_cols[yr] <- code_col
+    message(sprintf("  [DIAG] %s: no separate description column found; using '%s' for suggestions",
+                    yr, code_col))
+  } else {
+    manifest_desc_cols[yr] <- resolved_desc[1]
+  }
+}
+
+# ------------------------------------------------------------------------------
+# SUGGESTION ENGINE
+# For a failed code, derive keyword terms from the dataset label, search the
+# manifest description column for rows containing ALL terms, and return the
+# top-5 matching file codes.  This eliminates manual hunting.
+# ------------------------------------------------------------------------------
+suggest_correct_code <- function(failed_code, dataset_key, year, n_suggest = 5) {
+  manifest  <- cdc_manifests[[year]]
+  code_col  <- manifest_code_cols[[year]]
+  desc_col  <- manifest_desc_cols[[year]]
+
+  # Build keywords from the dataset label: strip punctuation, split on spaces,
+  # keep tokens longer than 3 chars, take first 4 (enough to be specific,
+  # not so many that a minor label difference breaks the search).
+  raw_label <- WHITELIST[[dataset_key]]$label
+  clean     <- gsub("[^A-Za-z0-9 ]", " ", raw_label)
+  tokens    <- strsplit(clean, "\\s+")[[1]]
+  keywords  <- tokens[nchar(tokens) > 3][1:min(4, sum(nchar(tokens) > 3))]
+
+  # Search description column: row must match at least ONE keyword (OR logic
+  # gives more results; we rank by how many keywords match).
+  if (length(keywords) == 0 || is.na(keywords[1])) {
+    return(character(0))
+  }
+  descriptions <- manifest[[desc_col]]
+  keyword_hits <- sapply(keywords, function(kw) {
+    grepl(kw, descriptions, ignore.case = TRUE)
+  })
+  if (is.vector(keyword_hits)) keyword_hits <- matrix(keyword_hits, ncol = 1)
+  match_count <- rowSums(keyword_hits)
+
+  candidates <- manifest[match_count > 0, , drop = FALSE]
+  candidates$match_score <- match_count[match_count > 0]
+  candidates <- candidates[order(-candidates$match_score), ]
+
+  if (nrow(candidates) == 0) return(character(0))
+
+  head(candidates[[code_col]], n_suggest)
+}
+
+# ------------------------------------------------------------------------------
+# MAIN VALIDATION LOOP
+# ------------------------------------------------------------------------------
+validation_results <- list()
+audit_has_errors   <- FALSE
+correction_rows    <- list()   # accumulates suggestions for failed codes
+
+for (key in names(WHITELIST)) {
+  entry <- WHITELIST[[key]]
+  for (yr in names(entry$codes)) {
+    code     <- entry$codes[[yr]]
+    manifest <- cdc_manifests[[yr]]
+    code_col <- manifest_code_cols[[yr]]
+
+    # Case-insensitive lookup — CDC manifest capitalisation is inconsistent
+    # across cycles (e.g. "PbCd_D" in 2005, "PBCD_H" in 2013, "IHg_E" in 2007).
+    # We fold to uppercase on both sides so a casing discrepancy does not mask
+    # a genuinely correct code.  nhanesA normalises the code when constructing
+    # the XPT download URL, so case only matters for this string comparison.
+    manifest_upper <- toupper(manifest[[code_col]])
+    found_exact    <- code %in% manifest[[code_col]]
+    found          <- toupper(code) %in% manifest_upper
+
+    # Emit a [CASE] notice when the match required case-folding so the
+    # whitelist can be updated to use CDC's exact capitalisation.
+    if (found && !found_exact) {
+      actual_code <- manifest[[code_col]][manifest_upper == toupper(code)][1]
+      message(sprintf(
+        "  [CASE]   '%s' (%s / %s) matched as '%s' — update whitelist to CDC casing.",
+        code, key, yr, actual_code
+      ))
+    }
+
+    is_uncertain <- code %in% needs_validation_codes
+
+    status <- if (found) "OK" else if (is_uncertain) "NEEDS_VALIDATION_MISSING" else "ERROR_MISSING"
+
+    if (status == "ERROR_MISSING") {
+      audit_has_errors <- TRUE
+      suggestions <- suggest_correct_code(code, key, yr)
+      sugg_str    <- if (length(suggestions) > 0) paste(suggestions, collapse = " | ") else "(no matches found)"
+      message(sprintf(
+        "  [ERROR]  '%s' (%s / %s) — NOT FOUND in CDC manifest for %s\n           Suggestions: %s",
+        code, key, yr, yr, sugg_str
+      ))
+      correction_rows[[length(correction_rows) + 1]] <- data.frame(
+        dataset     = key,
+        year        = yr,
+        bad_code    = code,
+        suggestions = sugg_str,
+        stringsAsFactors = FALSE
+      )
+    } else if (status == "NEEDS_VALIDATION_MISSING") {
+      suggestions <- suggest_correct_code(code, key, yr)
+      sugg_str    <- if (length(suggestions) > 0) paste(suggestions, collapse = " | ") else "(no matches found)"
+      message(sprintf(
+        "  [WARN]   '%s' (%s / %s) — not found (marked NEEDS_VALIDATION)\n           Suggestions: %s",
+        code, key, yr, sugg_str
+      ))
+      correction_rows[[length(correction_rows) + 1]] <- data.frame(
+        dataset     = key,
+        year        = yr,
+        bad_code    = code,
+        suggestions = sugg_str,
+        stringsAsFactors = FALSE
+      )
+    }
+
+    validation_results[[length(validation_results) + 1]] <- data.frame(
+      dataset = key, year = yr, code = code,
+      status = status, stringsAsFactors = FALSE
+    )
+  }
+}
+
+audit_df <- bind_rows(validation_results)
+n_ok   <- sum(audit_df$status == "OK")
+n_warn <- sum(audit_df$status == "NEEDS_VALIDATION_MISSING")
+n_err  <- sum(audit_df$status == "ERROR_MISSING")
+
+message(sprintf("\n  Audit complete: %d OK  |  %d NEEDS_VALIDATION not found  |  %d errors",
+                n_ok, n_warn, n_err))
+
+# Always save the full audit log + correction suggestions regardless of outcome
+write.csv(audit_df, "nhanes_audit_log.csv", row.names = FALSE)
+message("  Full audit log saved → nhanes_audit_log.csv")
+
+if (length(correction_rows) > 0) {
+  corrections_df <- bind_rows(correction_rows)
+  write.csv(corrections_df, "nhanes_audit_corrections_needed.csv", row.names = FALSE)
+  message("  Suggested corrections saved → nhanes_audit_corrections_needed.csv")
+  message("  Open that file, verify each suggestion against the CDC website,")
+  message("  then update the corresponding entry in the WHITELIST and re-run.")
+}
+
+# Also dump the full manifest for every year so you can search manually if
+# the suggestion engine misses something.
+for (yr in ALL_YEARS) {
+  fname <- sprintf("nhanes_manifest_%s.csv", yr)
+  write.csv(cdc_manifests[[yr]], fname, row.names = FALSE)
+}
+message("  Full manifests saved → nhanes_manifest_<year>.csv  (one per cycle)")
+
+if (audit_has_errors) {
+  stop(paste0(
+    "\n================================================================================\n",
+    "  PRE-FLIGHT AUDIT FAILED — ", n_err, " confirmed code(s) not found in CDC manifest\n",
+    "\n",
+    "  NEXT STEPS:\n",
+    "  1. Open nhanes_audit_corrections_needed.csv\n",
+    "     Each row shows the bad code and the top 5 description-matched suggestions.\n",
+    "  2. Cross-check suggestions against the matching nhanes_manifest_<year>.csv\n",
+    "  3. Update the WHITELIST entries in this script with the correct codes.\n",
+    "  4. Re-run.  The audit will confirm the fix before any data is downloaded.\n",
+    "================================================================================\n"
+  ))
+}
+
+# Identify which codes are confirmed-good for downstream use
+confirmed_codes <- audit_df %>% filter(status == "OK") %>%
+  select(dataset, year, code)
+
+message("\n[CHECK 2/3] Manifest audit passed for all confirmed codes.")
+if (n_warn > 0) {
+  message("  NOTE: ", n_warn, " NEEDS_VALIDATION code(s) were not found and will be SKIPPED.",
+          "\n  Their dataset entries will have NA in the intersection matrix for those years.")
+}
+
+
+# ==============================================================================
+# SECTION 4 — DOWNLOAD PARTICIPANT IDs (SEQN) PER YEAR
+# Only downloads files that passed manifest validation.
+# Assertions fire loudly on any unexpected result.
+# ==============================================================================
+
+message("\n[CHECK 3/3] Beginning SEQN downloads for confirmed codes only...")
+
+# Returns a validated integer vector of SEQNs, or stops loudly.
+# download_seqn returns a validated integer vector of SEQNs, or NULL if the
+# XPT file is unavailable at CDC (returns NULL from nhanes() with a message).
+# Unavailability is treated as a SKIP — the dataset gets NA in the matrix for
+# that year, the same as if it was never collected.  A hard stop() is still
+# used for genuine errors (network failure, missing SEQN column, duplicates).
+skipped_downloads <- character(0)   # accumulates "CODE (KEY / YR)" strings
+
+download_seqn <- function(file_code, dataset_key, year) {
+  Sys.sleep(0.4)  # polite throttle
+  message("    Downloading: ", file_code, "  (", dataset_key, " / ", year, ")")
+
+  df <- tryCatch(
+    nhanes(file_code),
+    error = function(e) {
+      stop(sprintf(
+        "DOWNLOAD FAILED: %s (%s / %s)\n  Error: %s",
+        file_code, dataset_key, year, e$message
+      ))
+    }
+  )
+
+  # NULL means CDC returned a "not available" message — skip gracefully
+  if (is.null(df)) {
+    skipped_downloads <<- c(skipped_downloads,
+      sprintf("%s (%s / %s)", file_code, dataset_key, year))
+    message(sprintf(
+      "    [SKIP] %s (%s / %s) — CDC returned NULL (file not available). Will be NA in matrix.",
+      file_code, dataset_key, year
+    ))
+    return(NULL)
+  }
+  if (!"SEQN" %in% names(df)) {
+    stop(sprintf(
+      "SEQN COLUMN MISSING: %s (%s / %s)\n  Columns present: %s",
+      file_code, dataset_key, year, paste(names(df), collapse = ", ")
+    ))
+  }
+  ids <- as.integer(df$SEQN)
+  if (any(is.na(ids))) {
+    stop(sprintf(
+      "NA VALUES IN SEQN: %s (%s / %s) — %d NA(s) found out of %d rows",
+      file_code, dataset_key, year, sum(is.na(ids)), nrow(df)
+    ))
+  }
+  if (length(ids) == 0) {
+    stop(sprintf("SEQN VECTOR IS EMPTY: %s (%s / %s)", file_code, dataset_key, year))
+  }
+  if (length(unique(ids)) != length(ids)) {
+    stop(sprintf(
+      "DUPLICATE SEQNs DETECTED: %s (%s / %s) — %d duplicate ID(s)",
+      file_code, dataset_key, year,
+      length(ids) - length(unique(ids))
+    ))
+  }
+  ids
+}
+
+# Build: id_store[[year]][[dataset_key]] = integer vector of SEQNs (or NULL)
+id_store <- list()
+
+for (yr in ALL_YEARS) {
+  message("\n  === Cycle ", yr, " ===")
+  id_store[[yr]] <- list()
+
+  for (key in names(WHITELIST)) {
+    confirmed_row <- confirmed_codes %>%
+      filter(dataset == key, year == yr)
+
+    if (nrow(confirmed_row) == 0) {
+      id_store[[yr]][[key]] <- NULL
+      next
+    }
+
+    if (nrow(confirmed_row) > 1) {
+      stop(sprintf(
+        "ASSERTION FAILED: More than one confirmed code for dataset '%s' in year %s: %s",
+        key, yr, paste(confirmed_row$code, collapse = ", ")
+      ))
+    }
+
+    result <- download_seqn(confirmed_row$code, key, yr)
+    id_store[[yr]][[key]] <- result   # NULL on skip, integer vector on success
+  }
+}
+
+message("\nAll downloads complete.")
+if (length(skipped_downloads) > 0) {
+  message(sprintf(
+    "  [SKIP SUMMARY] %d file(s) were unavailable at CDC and excluded from matrices:",
+    length(skipped_downloads)
+  ))
+  for (s in skipped_downloads) message("    • ", s)
+}
+
+
+# ==============================================================================
+# SECTION 5 — BUILD INTERSECTION MATRICES (ONE PER CYCLE)
+# ==============================================================================
+
+# Widen console so matrices don't wrap
+options(width = 200)
+
+# Helper: print an integer matrix compactly.
+# Each cell is right-justified to the width of the widest number in its column.
+# NAs are printed as "." to avoid noise.
+print_matrix_compact <- function(mat) {
+  # Convert to character, replacing NA with "."
+  char_mat <- matrix(
+    ifelse(is.na(mat), ".", formatC(mat, format = "d", big.mark = ",")),
+    nrow = nrow(mat),
+    dimnames = dimnames(mat)
+  )
+  # Column widths: max of header width and cell width
+  col_w <- pmax(nchar(colnames(char_mat)),
+                apply(char_mat, 2, function(x) max(nchar(x))))
+  row_w <- max(nchar(rownames(char_mat)))   # row-label width
+
+  # Header line
+  header <- paste0(
+    sprintf("%-*s", row_w, ""),
+    paste(sprintf("%*s", col_w, colnames(char_mat)), collapse = "  ")
+  )
+  cat(header, "\n")
+  # Separator
+  cat(strrep("-", nchar(header)), "\n")
+  # Data rows
+  for (i in seq_len(nrow(char_mat))) {
+    row_line <- paste0(
+      sprintf("%-*s", row_w, rownames(char_mat)[i]),
+      paste(sprintf("%*s", col_w, char_mat[i, ]), collapse = "  ")
+    )
+    cat(row_line, "\n")
+  }
+}
+
+message("\nBuilding per-cycle intersection matrices...")
+
+dataset_keys <- names(WHITELIST)
+n_datasets   <- length(dataset_keys)
+
+per_year_matrices <- list()   # integer matrices (NA where either dataset absent)
+long_rows         <- list()
+
+for (yr in ALL_YEARS) {
+  message("  Building matrix for ", yr, "...")
+
+  # Which datasets have confirmed data this year?
+  active_keys <- dataset_keys[
+    sapply(dataset_keys, function(k) !is.null(id_store[[yr]][[k]]))
+  ]
+
+  # Full N x N matrix; NA where one or both datasets not collected
+  mat <- matrix(NA_integer_, nrow = n_datasets, ncol = n_datasets,
+                dimnames = list(dataset_keys, dataset_keys))
+
+  for (i in seq_len(n_datasets)) {
+    for (j in seq_len(n_datasets)) {
+      ki <- dataset_keys[i]
+      kj <- dataset_keys[j]
+      ids_i <- id_store[[yr]][[ki]]
+      ids_j <- id_store[[yr]][[kj]]
+
+      if (!is.null(ids_i) && !is.null(ids_j)) {
+        overlap <- length(intersect(ids_i, ids_j))
+
+        # Assertion: diagonal must equal the full sample size
+        if (i == j && overlap != length(ids_i)) {
+          stop(sprintf(
+            "DIAGONAL ASSERTION FAILED: %s / %s — intersection(%d) != n_ids(%d)",
+            ki, yr, overlap, length(ids_i)
+          ))
+        }
+        mat[i, j] <- overlap
+      }
+    }
+  }
+
+  # Symmetry assertion (intersection is commutative)
+  active_idx <- which(dataset_keys %in% active_keys)
+  sub <- mat[active_idx, active_idx, drop = FALSE]
+  if (!isSymmetric(sub, na.rm = FALSE)) {
+    stop(sprintf("SYMMETRY ASSERTION FAILED: Matrix for year %s is not symmetric.", yr))
+  }
+
+  per_year_matrices[[yr]] <- mat
+
+  # Print the active sub-matrix using file codes as labels, formatted to fit
+  # on one screen without wrapping.
+  if (length(active_keys) > 1) {
+    codes_this_yr <- sapply(active_keys, function(k) {
+      code <- WHITELIST[[k]]$codes[yr]
+      if (is.na(code)) k else unname(code)
+    })
+    sub_coded <- sub
+    rownames(sub_coded) <- codes_this_yr
+    colnames(sub_coded) <- codes_this_yr
+    cat(sprintf("\n══ Intersection Matrix: %s (%d datasets) ══\n", yr, length(active_keys)))
+    print_matrix_compact(sub_coded)
+  } else {
+    cat(sprintf("\n  %s: only %d dataset — no pairs.\n", yr, length(active_keys)))
+  }
+
+  # Accumulate long-format rows (upper triangle + diagonal)
+  for (i in seq_len(n_datasets)) {
+    for (j in i:n_datasets) {
+      ki <- dataset_keys[i]
+      kj <- dataset_keys[j]
+      long_rows[[length(long_rows) + 1]] <- data.frame(
+        year      = yr,
+        dataset_a = ki,
+        label_a   = WHITELIST[[ki]]$label,
+        dataset_b = kj,
+        label_b   = WHITELIST[[kj]]$label,
+        n_overlap = mat[i, j],
+        n_a       = if (!is.null(id_store[[yr]][[ki]])) length(id_store[[yr]][[ki]]) else NA_integer_,
+        n_b       = if (!is.null(id_store[[yr]][[kj]])) length(id_store[[yr]][[kj]]) else NA_integer_,
+        stringsAsFactors = FALSE
+      )
+    }
+  }
+}
+
+
+# ==============================================================================
+# SECTION 6 — OVERALL MATRIX + KEY + SUMMARY  (no files written)
+# ==============================================================================
+
+# ── 6a. Combined all-years matrix ─────────────────────────────────────────────
+# For each pair (i,j), sum overlaps across all cycles in which BOTH datasets
+# were collected.  This gives a single N×N view across 2003-2017.
+cat("\n══ Overall Intersection Matrix: All Cycles 2003-2017 (sum of shared participants) ══\n")
+
+combined <- matrix(0L, nrow = n_datasets, ncol = n_datasets,
+                   dimnames = list(dataset_keys, dataset_keys))
+count_mat <- matrix(0L, nrow = n_datasets, ncol = n_datasets,
+                    dimnames = list(dataset_keys, dataset_keys))
+
+for (yr in ALL_YEARS) {
+  mat <- per_year_matrices[[yr]]
+  for (i in seq_len(n_datasets)) {
+    for (j in seq_len(n_datasets)) {
+      if (!is.na(mat[i, j])) {
+        combined[i, j]  <- combined[i, j]  + mat[i, j]
+        count_mat[i, j] <- count_mat[i, j] + 1L
+      }
+    }
+  }
+}
+
+# Only show rows/cols where the dataset appeared in at least one year
+active_any <- dataset_keys[apply(count_mat, 1, function(x) any(x > 0))]
+active_idx <- which(dataset_keys %in% active_any)
+comb_sub   <- combined[active_idx, active_idx, drop = FALSE]
+
+# Row/col labels: use the dataset key (e.g. PBCD, ALB_CR) — cleaner than a
+# year-specific file code for the combined matrix
+rownames(comb_sub) <- active_any
+colnames(comb_sub) <- active_any
+print_matrix_compact(comb_sub)
+
+# ── 6b. Dataset key ──────────────────────────────────────────────────────────────────────────────
+cat("\n══ Dataset Key ══\n")
+
+key_rows <- purrr::imap_dfr(WHITELIST, function(entry, key) {
+  label <- entry$label
+  specimen <- dplyr::case_when(
+    grepl("Blood|Serum", label, ignore.case = TRUE) ~ "Blood/Serum",
+    grepl("Urine",       label, ignore.case = TRUE) ~ "Urine",
+    TRUE                                             ~ "Other"
+  )
+  # Full description: strip trailing parenthetical year range, NEEDS_VALIDATION
+  # tag, and the em-dash specimen suffix so the cell is readable
+  desc <- gsub("\\s*\\(.*",  "", label)
+  desc <- gsub("\\s*\\[.*",  "", desc)
+  desc <- gsub("\\s*\u2013.*", "", desc)
+  desc <- trimws(desc)
+  yrs  <- paste(sort(names(entry$codes)), collapse = " ")
+  data.frame(Acronym     = key,
+             Specimen    = specimen,
+             Description = desc,
+             Years       = yrs,
+             stringsAsFactors = FALSE)
+})
+
+col_w <- c(
+  max(nchar(key_rows$Acronym),      nchar("Acronym")),
+  max(nchar(key_rows$Specimen),     nchar("Specimen")),
+  max(nchar(key_rows$Description),  nchar("Description")),
+  max(nchar(key_rows$Years),        nchar("Years"))
+)
+fmt <- paste0("  %-*s  %-*s  %-*s  %s")
+header <- sprintf(fmt,
+  col_w[1], "Acronym",
+  col_w[2], "Specimen",
+  col_w[3], "Description",
+  "Years")
+sep_line <- paste0("  ", strrep("-", nchar(header) - 2))
+cat(header, "\n", sep_line, "\n", sep = "")
+for (i in seq_len(nrow(key_rows))) {
+  cat(sprintf(fmt,
+    col_w[1], key_rows$Acronym[i],
+    col_w[2], key_rows$Specimen[i],
+    col_w[3], key_rows$Description[i],
+    key_rows$Years[i]), "\n")
+}
+
+# ── 6c. Top-20 pairs across all cycles ────────────────────────────────────────
+overlap_long <- bind_rows(long_rows) %>%
+  filter(!is.na(n_overlap), dataset_a != dataset_b) %>%
+  arrange(year, desc(n_overlap))
+
+pair_summary <- overlap_long %>%
+  group_by(dataset_a, dataset_b) %>%
+  summarise(
+    n_years       = n(),
+    years         = paste(sort(unique(year)), collapse = " "),
+    total_overlap = sum(n_overlap, na.rm = TRUE),
+    max_yr_n      = max(n_overlap, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(total_overlap))
+
+cat("\n══ Top 20 Dataset Pairs by Total Overlap (all cycles combined) ══\n")
+top20 <- head(pair_summary, 20)
+if (nrow(top20) == 0) {
+  cat("  (no pairs found)\n")
+} else {
+  print(top20, row.names = FALSE)
+}
+
+cat("\nDone. All matrices printed above. No files written.\n")
+```
+

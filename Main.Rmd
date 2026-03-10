@@ -258,12 +258,12 @@ nhanes_dict <- list(
                 "2015"="PBCD_I", "2017"="PBCD_J"),
                 
   # 3. Mercury: Speciated (Blood) -> Note: Split started after 2003
-  "IHGEM" = list("2005"="IHGEM_D", "2007"="IHGEM_E", 
+  "IHGEM" = list("2005"="IHG_D", "2007"="IHGEM_E", 
                  "2009"="IHGEM_F", "2011"="IHGEM_G", "2013"="IHGEM_H", 
                  "2015"="IHGEM_I", "2017"="IHGEM_J"),
                  
   # 4. Mercury: Inorganic (Urine) 
-  "UHG" = list("2003"="L06UHM_C", "2005"="UHG_D", "2007"="UHG_E", 
+  "UHG" = list("2003"="L06UHG_C", "2005"="UHG_D", "2007"="UHG_E", 
                "2009"="UHG_F", "2011"="UHG_G", "2013"="UHG_H", 
                "2015"="UHG_I", "2017"="UHG_J"),
                
@@ -286,7 +286,7 @@ nhanes_dict <- list(
   "SSPFAS" = list("2013"="SSPFAS_H", "2015"="SSPFAS_I", "2017"="SSPFAS_J"),
   
   # 9. Organophosphate Insecticides 
-  "OPD" = list("2003"="L26OPP_C", "2005"="OPD_D", "2007"="OPD_E", 
+  "OPD" = list("2003"="L26OPD_C", "2005"="OPD_D", "2007"="OPD_E", 
                "2009"="OPD_F", "2011"="OPD_G", "2013"="OPD_H", 
                "2015"="OPD_I", "2017"="OPD_J"),
                
@@ -423,37 +423,107 @@ clean_overlaps <- overlap_df %>%
   select(Pair, Overlap_N) %>%
   arrange(desc(Overlap_N))
 
-# 3. View the Top 15 Best Overlaps for your study
+# 3. View the Top 15 Best Overlaps for the study
 cat("\n=== TOP 15 MULTI-POLLUTANT COMBINATIONS (2003-2018) ===\n")
 print(head(clean_overlaps, 15))
 ```
 
-```{r} 
-# ==============================================================================
-# FINDING THE TOP CHEMICAL PAIRS (2003-2018)
-# ==============================================================================
+```{r}
 
-# 1. Convert the matrix into a flat table
-overlap_df <- as.data.frame(as.table(strict_master_matrix))
-colnames(overlap_df) <- c("Chemical_1", "Chemical_2", "Overlap_N")
-
-# 2. Filter out the diagonal (where Chemical 1 matches Chemical 2)
-# and remove duplicates (e.g., PFAS/PAH is the same as PAH/PFAS)
+# ==============================================================================
+# PROFESSOR PROOF: THE COMPLETE CDC MANIFEST AUDIT FOR ALL 15 CHEMICALS
+# ==============================================================================
+library(nhanesA)
 library(dplyr)
-clean_overlaps <- overlap_df %>%
-  filter(Chemical_1 != Chemical_2) %>%
-  mutate(
-    # Sort the names alphabetically so we can easily remove duplicates
-    Pair = paste(pmin(as.character(Chemical_1), as.character(Chemical_2)), 
-                 pmax(as.character(Chemical_1), as.character(Chemical_2)), 
-                 sep = " & ")
-  ) %>%
-  distinct(Pair, .keep_all = TRUE) %>%
-  select(Pair, Overlap_N) %>%
-  arrange(desc(Overlap_N))
+library(tidyr)
 
-# 3. View the Top 15 Best Overlaps for your study
-cat("\n=== TOP 15 MULTI-POLLUTANT COMBINATIONS (2003-2018) ===\n")
-print(head(clean_overlaps, 15))
+# 1. Download the complete, official CDC Lab Directories for 2003-2017
+years <- c(2003, 2005, 2007, 2009, 2011, 2013, 2015, 2017)
+all_labs <- list()
+
+for (y in years) {
+  cat("Fetching official CDC manifest for", y, "...\n")
+  df <- tryCatch(nhanesTables('LAB', y), error = function(e) NULL)
+  if(!is.null(df)) {
+    df$CycleYear <- y
+    all_labs[[as.character(y)]] <- df
+  }
+}
+
+# Combine all years into one master dataframe
+cdc_manifest <- dplyr::bind_rows(all_labs)
+
+# 2. BULLETPROOF FIX: Strip all dots, spaces, and caps from CDC column names
+# This ensures it always works regardless of your nhanesA package version
+names(cdc_manifest) <- tolower(gsub("[^A-Za-z0-9]", "", names(cdc_manifest)))
+
+# Now we know for a fact:
+# 'docfile' = the short code (e.g., L06_C)
+# 'datafilename' = the description (e.g., Volatile Organic Compounds)
+# 'cycleyear' = the year
+
+# 3. Define strict search patterns for ALL 15 chemicals
+search_patterns <- list(
+  "ALB_CR" = "Albumin.*Creatinine",
+  "PBCD"   = "Cadmium.*Lead.*Mercury",
+  "IHGEM"  = "Mercury.*Inorganic|Speciated.*Mercury|Methyl.*Mercury",
+  "UHG"    = "Mercury.*Urine|Iodine.*Mercury",
+  "VOCWB"  = "Volatile Organic Compounds.*Blood",
+  "PFAS"   = "Polyfluoroalkyl.*Serum|Perfluoroalkyl.*Serum",
+  "PHTHTE" = "Phthalates",
+  "SSPFAS" = "Surplus.*PFAS|Surplus.*Polyfluoro|Surplus.*Perfluoro",
+  "OPD"    = "Organophosphate|Dialkyl Phosphate",
+  "PERNT"  = "Perchlorate.*Nitrate",
+  "UVOC"   = "Volatile Organic Compound.*Urine",
+  "SSUVOC" = "Surplus.*Volatile Organic Compound.*Urine",
+  "UPHOPM" = "Pyrethroid.*Herbicide|Organophosphorus.*Herbicide",
+  "SSUVCM" = "Surplus.*Benzene.*Methylating",
+  "PAH"    = "Polyaromatic|Polycyclic Aromatic"
+)
+
+# 4. Build a comprehensive matrix showing exactly what exists
+results <- list()
+
+for (chem_name in names(search_patterns)) {
+  pattern <- search_patterns[[chem_name]]
+  
+  for (y in years) {
+    # Filter by year and search the DESCRIPTION column (datafilename)
+    matches <- cdc_manifest %>% 
+      filter(cycleyear == y & grepl(pattern, datafilename, ignore.case = TRUE))
+    
+    # Exclude/Include "Surplus" files properly based on the chemical acronym
+    if (!grepl("SS", chem_name)) {
+      matches <- matches %>% filter(!grepl("Surplus", datafilename, ignore.case = TRUE))
+    } else {
+      matches <- matches %>% filter(grepl("Surplus", datafilename, ignore.case = TRUE))
+    }
+    
+    if (nrow(matches) > 0) {
+      # Grab the exact file code(s) from the CODE column (docfile)
+      file_name <- paste(unique(matches$docfile), collapse = " | ")
+    } else {
+      file_name <- "NOT COLLECTED" 
+    }
+    
+    results[[length(results) + 1]] <- data.frame(
+      Chemical = chem_name,
+      Year = y,
+      CDC_File_Name = file_name
+    )
+  }
+}
+
+# 5. Pivot the results into a clean, readable matrix 
+final_proof_matrix <- dplyr::bind_rows(results) %>%
+  pivot_wider(names_from = Year, values_from = CDC_File_Name)
+
+# Print it nicely to the console and open it in RStudio's viewer
+cat("\n=== DEFINITIVE CDC DATA AVAILABILITY MATRIX (2003-2018) ===\n")
+print(as.data.frame(final_proof_matrix))
+View(final_proof_matrix)
+
+# 6. Export for your professor:
+write.csv(final_proof_matrix, "CDC_Data_Availability_Proof.csv", row.names = FALSE)
 ```
 

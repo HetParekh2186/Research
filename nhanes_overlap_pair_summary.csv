@@ -1,0 +1,211 @@
+"dataset_a","label_a","dataset_b","label_b","years_both_collected","years_available","total_overlap_sum","max_single_year"
+"IHGEM","Mercury: Inorganic, Ethyl & Methyl – Blood (2007-2017)","ALB_CR","Albumin & Creatinine – Urine (all cycles)",6,"2007, 2009, 2011, 2013, 2015, 2017",42539,8591
+"PBCD","Cadmium, Lead & Total Mercury – Blood (2003-2009)","ALB_CR","Albumin & Creatinine – Urine (all cycles)",4,"2003, 2005, 2007, 2009",32791,8591
+"PERNT","Perchlorate, Nitrate & Thiocyanate – Urine (2005-2017)","ALB_CR","Albumin & Creatinine – Urine (all cycles)",7,"2005, 2007, 2009, 2011, 2013, 2015, 2017",30766,8132
+"PBCD_EXT","Cadmium, Lead, Hg, Selenium & Manganese – Blood (2011-2017)","IHGEM","Mercury: Inorganic, Ethyl & Methyl – Blood (2007-2017)",4,"2011, 2013, 2015, 2017",29069,8956
+"PBCD_EXT","Cadmium, Lead, Hg, Selenium & Manganese – Blood (2011-2017)","ALB_CR","Albumin & Creatinine – Urine (all cycles)",4,"2011, 2013, 2015, 2017",25816,7936
+"VOCWB","VOCs – Blood (full panel, all cycles)","ALB_CR","Albumin & Creatinine – Urine (all cycles)",8,"2003, 2005, 2007, 2009, 2011, 2013, 2015, 2017",25543,3745
+"IHGEM","Mercury: Inorganic, Ethyl & Methyl – Blood (2007-2017)","PERNT","Perchlorate, Nitrate & Thiocyanate – Urine (2005-2017)",6,"2007, 2009, 2011, 2013, 2015, 2017",22680,8132
+"UHG","Mercury: Inorganic – Urine (all cycles)","ALB_CR","Albumin & Creatinine – Urine (all cycles)",8,"2003, 2005, 2007, 2009, 2011, 2013, 2015, 2017",22633,3279
+"PHTHTE","Phthalates & Plasticizers Metabolites – Urine (all cycles)","ALB_CR","Albumin & Creatinine – Urine (all cycles)",8,"2003, 2005, 2007, 2009, 2011, 2013, 2015, 2017",22434,3205
+"IHGEM","Mercury: Inorganic, Ethyl & Methyl – Blood (2007-2017)","VOCWB","VOCs – Blood (full panel, all cycles)",6,"2007, 2009, 2011, 2013, 2015, 2017",20509,3745
+"IHGEM","Mercury: Inorganic, Ethyl & Methyl – Blood (2007-2017)","VOC_TTHM","VOCs – Trihalomethanes/MTBE/Nitromethane – Blood  [NEEDS_VALIDATION for 2007]",6,"2007, 2009, 2011, 2013, 2015, 2017",20509,3745
+"VOCWB","VOCs – Blood (full panel, all cycles)","VOC_TTHM","VOCs – Trihalomethanes/MTBE/Nitromethane – Blood  [NEEDS_VALIDATION for 2007]",6,"2007, 2009, 2011, 2013, 2015, 2017",20509,3745
+"VOC_TTHM","VOCs – Trihalomethanes/MTBE/Nitromethane – Blood  [NEEDS_VALIDATION for 2007]","ALB_CR","Albumin & Creatinine – Urine (all cycles)",6,"2007, 2009, 2011, 2013, 2015, 2017",20509,3745
+"UHG","Mercury: Inorganic – Urine (all cycles)","PERNT","Perchlorate, Nitrate & Thiocyanate – Urine (2005-2017)",7,"2005, 2007, 2009, 2011, 2013, 2015, 2017",19960,3279
+"PBCD","Cadmium, Lead & Total Mercury – Blood (2003-2009)","PERNT","Perchlorate, Nitrate & Thiocyanate – Urine (2005-2017)",3,"2005, 2007, 2009",19159,8132
+"PBCD","Cadmium, Lead & Total Mercury – Blood (2003-2009)","IHGEM","Mercury: Inorganic, Ethyl & Methyl – Blood (2007-2017)",2,"2007, 2009",19142,9835
+"VOCWB","VOCs – Blood (full panel, all cycles)","PERNT","Perchlorate, Nitrate & Thiocyanate – Urine (2005-2017)",7,"2005, 2007, 2009, 2011, 2013, 2015, 2017",18420,3545
+"IHGEM","Mercury: Inorganic, Ethyl & Methyl – Blood (2007-2017)","UHG","Mercury: Inorganic – Urine (all cycles)",6,"2007, 2009, 2011, 2013, 2015, 2017",17268,3279
+"VOC_TTHM","VOCs – Trihalomethanes/MTBE/Nitromethane – Blood  [NEEDS_VALIDATION for 2007]","PERNT","Perchlorate, Nitrate & Thiocyanate – Urine (2005-2017)",6,"2007, 2009, 2011, 2013, 2015, 2017",14875,3415
+"UHG","Mercury: Inorganic – Urine (all cycles)","VOCWB","VOCs – Blood (full panel, all cycles)",8,"2003, 2005, 2007, 2009, 2011, 2013, 2015, 2017",14592,2544
+"UHG","Mercury: Inorganic – Urine (all cycles)","VOC_TTHM","VOCs – Trihalomethanes/MTBE/Nitromethane – Blood  [NEEDS_VALIDATION for 2007]",6,"2007, 2009, 2011, 2013, 2015, 2017",13771,2544
+"IHGEM","Mercury: Inorganic, Ethyl & Methyl – Blood (2007-2017)","PHTHTE","Phthalates & Plasticizers Metabolites – Urine (all cycles)",6,"2007, 2009, 2011, 2013, 2015, 2017",13726,2986
+"PEST","Pesticides – Environmental – Urine (2003-2011)  [NEEDS_VALIDATION: 2005-2011]","ALB_CR","Albumin & Creatinine – Urine (all cycles)",5,"2003, 2005, 2007, 2009, 2011",13475,2819
+"PAH","Polyaromatic Hydrocarbons (PAHs) – Urine (2003-2011)","ALB_CR","Albumin & Creatinine – Urine (all cycles)",5,"2003, 2005, 2007, 2009, 2011",13466,2819
+"PHTHTE","Phthalates & Plasticizers Metabolites – Urine (all cycles)","PAH","Polyaromatic Hydrocarbons (PAHs) – Urine (2003-2011)",5,"2003, 2005, 2007, 2009, 2011",13466,2819
+"PBCD_EXT","Cadmium, Lead, Hg, Selenium & Manganese – Blood (2011-2017)","VOCWB","VOCs – Blood (full panel, all cycles)",4,"2011, 2013, 2015, 2017",13349,3489
+"PBCD_EXT","Cadmium, Lead, Hg, Selenium & Manganese – Blood (2011-2017)","VOC_TTHM","VOCs – Trihalomethanes/MTBE/Nitromethane – Blood  [NEEDS_VALIDATION for 2007]",4,"2011, 2013, 2015, 2017",13349,3489
+"PBCD","Cadmium, Lead & Total Mercury – Blood (2003-2009)","VOCWB","VOCs – Blood (full panel, all cycles)",4,"2003, 2005, 2007, 2009",12194,3745
+"PBCD_EXT","Cadmium, Lead, Hg, Selenium & Manganese – Blood (2011-2017)","PERNT","Perchlorate, Nitrate & Thiocyanate – Urine (2005-2017)",4,"2011, 2013, 2015, 2017",11607,3279
+"PBCD_EXT","Cadmium, Lead, Hg, Selenium & Manganese – Blood (2011-2017)","UHG","Mercury: Inorganic – Urine (all cycles)",4,"2011, 2013, 2015, 2017",11607,3279
+"PFC","Polyfluoroalkyl Chemicals – Serum (2003-2011, PFC series)","ALB_CR","Albumin & Creatinine – Urine (all cycles)",5,"2003, 2005, 2007, 2009, 2011",11594,2432
+"IHGEM","Mercury: Inorganic, Ethyl & Methyl – Blood (2007-2017)","UVOC","VOC Metabolites – Urine (2011-2017; 2005-2009 not published per audit)",4,"2011, 2013, 2015, 2017",11564,3279
+"PBCD_EXT","Cadmium, Lead, Hg, Selenium & Manganese – Blood (2011-2017)","UVOC","VOC Metabolites – Urine (2011-2017; 2005-2009 not published per audit)",4,"2011, 2013, 2015, 2017",11564,3279
+"PERNT","Perchlorate, Nitrate & Thiocyanate – Urine (2005-2017)","UVOC","VOC Metabolites – Urine (2011-2017; 2005-2009 not published per audit)",4,"2011, 2013, 2015, 2017",11564,3279
+"UHG","Mercury: Inorganic – Urine (all cycles)","UVOC","VOC Metabolites – Urine (2011-2017; 2005-2009 not published per audit)",4,"2011, 2013, 2015, 2017",11564,3279
+"UVOC","VOC Metabolites – Urine (2011-2017; 2005-2009 not published per audit)","ALB_CR","Albumin & Creatinine – Urine (all cycles)",4,"2011, 2013, 2015, 2017",11564,3279
+"OPD","Organophosphate Insecticides – Dialkyl Phosphate Metabolites – Urine","ALB_CR","Albumin & Creatinine – Urine (all cycles)",4,"2003, 2005, 2007, 2015",11267,3205
+"PBCD","Cadmium, Lead & Total Mercury – Blood (2003-2009)","UHG","Mercury: Inorganic – Urine (all cycles)",4,"2003, 2005, 2007, 2009",11026,2941
+"PBCD","Cadmium, Lead & Total Mercury – Blood (2003-2009)","PEST","Pesticides – Environmental – Urine (2003-2011)  [NEEDS_VALIDATION: 2005-2011]",4,"2003, 2005, 2007, 2009",10881,2819
+"PBCD","Cadmium, Lead & Total Mercury – Blood (2003-2009)","PAH","Polyaromatic Hydrocarbons (PAHs) – Urine (2003-2011)",4,"2003, 2005, 2007, 2009",10872,2819
+"PBCD","Cadmium, Lead & Total Mercury – Blood (2003-2009)","PHTHTE","Phthalates & Plasticizers Metabolites – Urine (all cycles)",4,"2003, 2005, 2007, 2009",10872,2819
+"PBCD","Cadmium, Lead & Total Mercury – Blood (2003-2009)","IHG","Mercury: Inorganic – Blood (2005 only)",1,"2005",9440,9440
+"PBCD","Cadmium, Lead & Total Mercury – Blood (2003-2009)","PFC","Polyfluoroalkyl Chemicals – Serum (2003-2011, PFC series)",4,"2003, 2005, 2007, 2009",9417,2432
+"PHTHTE","Phthalates & Plasticizers Metabolites – Urine (all cycles)","PERNT","Perchlorate, Nitrate & Thiocyanate – Urine (2005-2017)",7,"2005, 2007, 2009, 2011, 2013, 2015, 2017",9038,2718
+"VOCWB","VOCs – Blood (full panel, all cycles)","UVOC","VOC Metabolites – Urine (2011-2017; 2005-2009 not published per audit)",4,"2011, 2013, 2015, 2017",8883,2324
+"VOC_TTHM","VOCs – Trihalomethanes/MTBE/Nitromethane – Blood  [NEEDS_VALIDATION for 2007]","UVOC","VOC Metabolites – Urine (2011-2017; 2005-2009 not published per audit)",4,"2011, 2013, 2015, 2017",8883,2324
+"UPHOPM","Pyrethroids, Herbicides & OP Metabolites – Urine (2011-2015, UPHOPM series)","ALB_CR","Albumin & Creatinine – Urine (all cycles)",3,"2011, 2013, 2015",8469,3205
+"PBCD_EXT","Cadmium, Lead, Hg, Selenium & Manganese – Blood (2011-2017)","PHTHTE","Phthalates & Plasticizers Metabolites – Urine (all cycles)",4,"2011, 2013, 2015, 2017",8189,2986
+"IHGEM","Mercury: Inorganic, Ethyl & Methyl – Blood (2007-2017)","PAH","Polyaromatic Hydrocarbons (PAHs) – Urine (2003-2011)",3,"2007, 2009, 2011",8131,2819
+"IHGEM","Mercury: Inorganic, Ethyl & Methyl – Blood (2007-2017)","PEST","Pesticides – Environmental – Urine (2003-2011)  [NEEDS_VALIDATION: 2005-2011]",3,"2007, 2009, 2011",8107,2819
+"IHG","Mercury: Inorganic – Blood (2005 only)","ALB_CR","Albumin & Creatinine – Urine (all cycles)",1,"2005",8086,8086
+"IHG","Mercury: Inorganic – Blood (2005 only)","PERNT","Perchlorate, Nitrate & Thiocyanate – Urine (2005-2017)",1,"2005",8086,8086
+"OPD","Organophosphate Insecticides – Dialkyl Phosphate Metabolites – Urine","PEST","Pesticides – Environmental – Urine (2003-2011)  [NEEDS_VALIDATION: 2005-2011]",3,"2003, 2005, 2007",8062,2756
+"PBCD","Cadmium, Lead & Total Mercury – Blood (2003-2009)","OPD","Organophosphate Insecticides – Dialkyl Phosphate Metabolites – Urine",3,"2003, 2005, 2007",8062,2756
+"PERNT","Perchlorate, Nitrate & Thiocyanate – Urine (2005-2017)","PEST","Pesticides – Environmental – Urine (2003-2011)  [NEEDS_VALIDATION: 2005-2011]",4,"2005, 2007, 2009, 2011",8044,2756
+"PBCD","Cadmium, Lead & Total Mercury – Blood (2003-2009)","PP","Pesticides – Current Use / Priority Pesticides – Urine (2003-2007)  [NEEDS_VALIDATION for 2003]",3,"2003, 2005, 2007",7968,2718
+"PP","Pesticides – Current Use / Priority Pesticides – Urine (2003-2007)  [NEEDS_VALIDATION for 2003]","ALB_CR","Albumin & Creatinine – Urine (all cycles)",3,"2003, 2005, 2007",7968,2718
+"PERNT","Perchlorate, Nitrate & Thiocyanate – Urine (2005-2017)","PAH","Polyaromatic Hydrocarbons (PAHs) – Urine (2003-2011)",4,"2005, 2007, 2009, 2011",7950,2718
+"PBCD","Cadmium, Lead & Total Mercury – Blood (2003-2009)","VOC_TTHM","VOCs – Trihalomethanes/MTBE/Nitromethane – Blood  [NEEDS_VALIDATION for 2007]",2,"2007, 2009",7160,3745
+"IHGEM","Mercury: Inorganic, Ethyl & Methyl – Blood (2007-2017)","PFC","Polyfluoroalkyl Chemicals – Serum (2003-2011, PFC series)",3,"2007, 2009, 2011",6903,2432
+"UHG","Mercury: Inorganic – Urine (all cycles)","PFC","Polyfluoroalkyl Chemicals – Serum (2003-2011, PFC series)",5,"2003, 2005, 2007, 2009, 2011",6868,2368
+"PFC","Polyfluoroalkyl Chemicals – Serum (2003-2011, PFC series)","PERNT","Perchlorate, Nitrate & Thiocyanate – Urine (2005-2017)",4,"2005, 2007, 2009, 2011",6794,2323
+"VOCWB","VOCs – Blood (full panel, all cycles)","PEST","Pesticides – Environmental – Urine (2003-2011)  [NEEDS_VALIDATION: 2005-2011]",5,"2003, 2005, 2007, 2009, 2011",6676,2389
+"PFAS","PFAS – Serum (2013-2017, renamed from PFC)","ALB_CR","Albumin & Creatinine – Urine (all cycles)",3,"2013, 2015, 2017",6642,2339
+"PFAS","PFAS – Serum (2013-2017, renamed from PFC)","PHTHTE","Phthalates & Plasticizers Metabolites – Urine (all cycles)",3,"2013, 2015, 2017",6642,2339
+"PERNT","Perchlorate, Nitrate & Thiocyanate – Urine (2005-2017)","OPD","Organophosphate Insecticides – Dialkyl Phosphate Metabolites – Urine",3,"2005, 2007, 2015",6037,2756
+"VOCWB","VOCs – Blood (full panel, all cycles)","PHTHTE","Phthalates & Plasticizers Metabolites – Urine (all cycles)",8,"2003, 2005, 2007, 2009, 2011, 2013, 2015, 2017",5818,2177
+"IHGEM","Mercury: Inorganic, Ethyl & Methyl – Blood (2007-2017)","PYRET_EARLY","Pyrethroids, Herbicides & OP Metabolites – Urine (2007-2009)",2,"2007, 2009",5537,2819
+"PBCD","Cadmium, Lead & Total Mercury – Blood (2003-2009)","PYRET_EARLY","Pyrethroids, Herbicides & OP Metabolites – Urine (2007-2009)",2,"2007, 2009",5537,2819
+"PHTHTE","Phthalates & Plasticizers Metabolites – Urine (all cycles)","PYRET_EARLY","Pyrethroids, Herbicides & OP Metabolites – Urine (2007-2009)",2,"2007, 2009",5537,2819
+"PYRET_EARLY","Pyrethroids, Herbicides & OP Metabolites – Urine (2007-2009)","ALB_CR","Albumin & Creatinine – Urine (all cycles)",2,"2007, 2009",5537,2819
+"PYRET_EARLY","Pyrethroids, Herbicides & OP Metabolites – Urine (2007-2009)","PAH","Polyaromatic Hydrocarbons (PAHs) – Urine (2003-2011)",2,"2007, 2009",5537,2819
+"CARB","Pesticides – Carbamates & OP Metabolites – Urine (2005-2007)","ALB_CR","Albumin & Creatinine – Urine (all cycles)",2,"2005, 2007",5450,2756
+"OPD","Organophosphate Insecticides – Dialkyl Phosphate Metabolites – Urine","CARB","Pesticides – Carbamates & OP Metabolites – Urine (2005-2007)",2,"2005, 2007",5450,2756
+"PBCD","Cadmium, Lead & Total Mercury – Blood (2003-2009)","CARB","Pesticides – Carbamates & OP Metabolites – Urine (2005-2007)",2,"2005, 2007",5450,2756
+"PERNT","Perchlorate, Nitrate & Thiocyanate – Urine (2005-2017)","CARB","Pesticides – Carbamates & OP Metabolites – Urine (2005-2007)",2,"2005, 2007",5450,2756
+"PEST","Pesticides – Environmental – Urine (2003-2011)  [NEEDS_VALIDATION: 2005-2011]","CARB","Pesticides – Carbamates & OP Metabolites – Urine (2005-2007)",2,"2005, 2007",5450,2756
+"PEST","Pesticides – Environmental – Urine (2003-2011)  [NEEDS_VALIDATION: 2005-2011]","PAH","Polyaromatic Hydrocarbons (PAHs) – Urine (2003-2011)",5,"2003, 2005, 2007, 2009, 2011",5413,2819
+"PHTHTE","Phthalates & Plasticizers Metabolites – Urine (all cycles)","PEST","Pesticides – Environmental – Urine (2003-2011)  [NEEDS_VALIDATION: 2005-2011]",5,"2003, 2005, 2007, 2009, 2011",5413,2819
+"PERNT","Perchlorate, Nitrate & Thiocyanate – Urine (2005-2017)","PP","Pesticides – Current Use / Priority Pesticides – Urine (2003-2007)  [NEEDS_VALIDATION for 2003]",2,"2005, 2007",5356,2718
+"PHTHTE","Phthalates & Plasticizers Metabolites – Urine (all cycles)","PP","Pesticides – Current Use / Priority Pesticides – Urine (2003-2007)  [NEEDS_VALIDATION for 2003]",3,"2003, 2005, 2007",5356,2718
+"PP","Pesticides – Current Use / Priority Pesticides – Urine (2003-2007)  [NEEDS_VALIDATION for 2003]","PAH","Polyaromatic Hydrocarbons (PAHs) – Urine (2003-2011)",3,"2003, 2005, 2007",5356,2718
+"IHGEM","Mercury: Inorganic, Ethyl & Methyl – Blood (2007-2017)","UPHOPM","Pyrethroids, Herbicides & OP Metabolites – Urine (2011-2015, UPHOPM series)",3,"2011, 2013, 2015",5084,2505
+"PBCD_EXT","Cadmium, Lead, Hg, Selenium & Manganese – Blood (2011-2017)","UPHOPM","Pyrethroids, Herbicides & OP Metabolites – Urine (2011-2015, UPHOPM series)",3,"2011, 2013, 2015",5084,2505
+"VOC_TTHM","VOCs – Trihalomethanes/MTBE/Nitromethane – Blood  [NEEDS_VALIDATION for 2007]","PHTHTE","Phthalates & Plasticizers Metabolites – Urine (all cycles)",6,"2007, 2009, 2011, 2013, 2015, 2017",4974,2177
+"PFC","Polyfluoroalkyl Chemicals – Serum (2003-2011, PFC series)","PEST","Pesticides – Environmental – Urine (2003-2011)  [NEEDS_VALIDATION: 2005-2011]",5,"2003, 2005, 2007, 2009, 2011",4471,2294
+"VOCWB","VOCs – Blood (full panel, all cycles)","OPD","Organophosphate Insecticides – Dialkyl Phosphate Metabolites – Urine",4,"2003, 2005, 2007, 2015",4453,2389
+"IHGEM","Mercury: Inorganic, Ethyl & Methyl – Blood (2007-2017)","OPD","Organophosphate Insecticides – Dialkyl Phosphate Metabolites – Urine",2,"2007, 2015",4265,2694
+"PFC","Polyfluoroalkyl Chemicals – Serum (2003-2011, PFC series)","VOCWB","VOCs – Blood (full panel, all cycles)",5,"2003, 2005, 2007, 2009, 2011",4165,2177
+"VOCWB","VOCs – Blood (full panel, all cycles)","PAH","Polyaromatic Hydrocarbons (PAHs) – Urine (2003-2011)",5,"2003, 2005, 2007, 2009, 2011",4159,2177
+"UHG","Mercury: Inorganic – Urine (all cycles)","PHTHTE","Phthalates & Plasticizers Metabolites – Urine (all cycles)",8,"2003, 2005, 2007, 2009, 2011, 2013, 2015, 2017",3682,2594
+"PHTHTE","Phthalates & Plasticizers Metabolites – Urine (all cycles)","UVOC","VOC Metabolites – Urine (2011-2017; 2005-2009 not published per audit)",4,"2011, 2013, 2015, 2017",3639,2551
+"PFAS","PFAS – Serum (2013-2017, renamed from PFC)","SSPFAS","PFAS – Surplus Serum (2013, 2017)",2,"2013, 2017",3626,1954
+"SSPFAS","PFAS – Surplus Serum (2013, 2017)","ALB_CR","Albumin & Creatinine – Urine (all cycles)",2,"2013, 2017",3626,1954
+"SSPFAS","PFAS – Surplus Serum (2013, 2017)","PHTHTE","Phthalates & Plasticizers Metabolites – Urine (all cycles)",2,"2013, 2017",3626,1954
+"IHG","Mercury: Inorganic – Blood (2005 only)","VOCWB","VOCs – Blood (full panel, all cycles)",1,"2005",3545,3545
+"PFC","Polyfluoroalkyl Chemicals – Serum (2003-2011, PFC series)","VOC_TTHM","VOCs – Trihalomethanes/MTBE/Nitromethane – Blood  [NEEDS_VALIDATION for 2007]",3,"2007, 2009, 2011",3344,2177
+"VOC_TTHM","VOCs – Trihalomethanes/MTBE/Nitromethane – Blood  [NEEDS_VALIDATION for 2007]","PAH","Polyaromatic Hydrocarbons (PAHs) – Urine (2003-2011)",3,"2007, 2009, 2011",3315,2177
+"VOC_TTHM","VOCs – Trihalomethanes/MTBE/Nitromethane – Blood  [NEEDS_VALIDATION for 2007]","PEST","Pesticides – Environmental – Urine (2003-2011)  [NEEDS_VALIDATION: 2005-2011]",3,"2007, 2009, 2011",3307,2177
+"IHGEM","Mercury: Inorganic, Ethyl & Methyl – Blood (2007-2017)","PFAS","PFAS – Serum (2013-2017, renamed from PFC)",3,"2013, 2015, 2017",3269,2133
+"PBCD_EXT","Cadmium, Lead, Hg, Selenium & Manganese – Blood (2011-2017)","PFAS","PFAS – Serum (2013-2017, renamed from PFC)",3,"2013, 2015, 2017",3269,2133
+"OPD","Organophosphate Insecticides – Dialkyl Phosphate Metabolites – Urine","UPHOPM","Pyrethroids, Herbicides & OP Metabolites – Urine (2011-2015, UPHOPM series)",1,"2015",3205,3205
+"PHTHTE","Phthalates & Plasticizers Metabolites – Urine (all cycles)","OPD","Organophosphate Insecticides – Dialkyl Phosphate Metabolites – Urine",4,"2003, 2005, 2007, 2015",3205,3205
+"PHTHTE","Phthalates & Plasticizers Metabolites – Urine (all cycles)","UPHOPM","Pyrethroids, Herbicides & OP Metabolites – Urine (2011-2015, UPHOPM series)",3,"2011, 2013, 2015",3205,3205
+"IHGEM","Mercury: Inorganic, Ethyl & Methyl – Blood (2007-2017)","SSUVOC","VOC Metabolites – Surplus – Urine (2017 only)",1,"2017",2979,2979
+"PBCD_EXT","Cadmium, Lead, Hg, Selenium & Manganese – Blood (2011-2017)","SSUVOC","VOC Metabolites – Surplus – Urine (2017 only)",1,"2017",2979,2979
+"PERNT","Perchlorate, Nitrate & Thiocyanate – Urine (2005-2017)","SSUVOC","VOC Metabolites – Surplus – Urine (2017 only)",1,"2017",2979,2979
+"SSUVOC","VOC Metabolites – Surplus – Urine (2017 only)","ALB_CR","Albumin & Creatinine – Urine (all cycles)",1,"2017",2979,2979
+"UHG","Mercury: Inorganic – Urine (all cycles)","SSUVOC","VOC Metabolites – Surplus – Urine (2017 only)",1,"2017",2979,2979
+"UVOC","VOC Metabolites – Urine (2011-2017; 2005-2009 not published per audit)","SSUVOC","VOC Metabolites – Surplus – Urine (2017 only)",1,"2017",2979,2979
+"VOCWB","VOCs – Blood (full panel, all cycles)","CARB","Pesticides – Carbamates & OP Metabolites – Urine (2005-2007)",2,"2005, 2007",2937,2389
+"PEST","Pesticides – Environmental – Urine (2003-2011)  [NEEDS_VALIDATION: 2005-2011]","PYRET_EARLY","Pyrethroids, Herbicides & OP Metabolites – Urine (2007-2009)",2,"2007, 2009",2819,2819
+"IHG","Mercury: Inorganic – Blood (2005 only)","CARB","Pesticides – Carbamates & OP Metabolites – Urine (2005-2007)",1,"2005",2756,2756
+"IHG","Mercury: Inorganic – Blood (2005 only)","OPD","Organophosphate Insecticides – Dialkyl Phosphate Metabolites – Urine",1,"2005",2756,2756
+"IHG","Mercury: Inorganic – Blood (2005 only)","PEST","Pesticides – Environmental – Urine (2003-2011)  [NEEDS_VALIDATION: 2005-2011]",1,"2005",2756,2756
+"IHGEM","Mercury: Inorganic, Ethyl & Methyl – Blood (2007-2017)","PP","Pesticides – Current Use / Priority Pesticides – Urine (2003-2007)  [NEEDS_VALIDATION for 2003]",1,"2007",2718,2718
+"PERNT","Perchlorate, Nitrate & Thiocyanate – Urine (2005-2017)","PYRET_EARLY","Pyrethroids, Herbicides & OP Metabolites – Urine (2007-2009)",2,"2007, 2009",2718,2718
+"PP","Pesticides – Current Use / Priority Pesticides – Urine (2003-2007)  [NEEDS_VALIDATION for 2003]","PYRET_EARLY","Pyrethroids, Herbicides & OP Metabolites – Urine (2007-2009)",1,"2007",2718,2718
+"IHGEM","Mercury: Inorganic, Ethyl & Methyl – Blood (2007-2017)","CARB","Pesticides – Carbamates & OP Metabolites – Urine (2005-2007)",1,"2007",2694,2694
+"IHG","Mercury: Inorganic – Blood (2005 only)","UHG","Mercury: Inorganic – Urine (all cycles)",1,"2005",2692,2692
+"IHG","Mercury: Inorganic – Blood (2005 only)","PAH","Polyaromatic Hydrocarbons (PAHs) – Urine (2003-2011)",1,"2005",2638,2638
+"IHG","Mercury: Inorganic – Blood (2005 only)","PHTHTE","Phthalates & Plasticizers Metabolites – Urine (all cycles)",1,"2005",2638,2638
+"IHG","Mercury: Inorganic – Blood (2005 only)","PP","Pesticides – Current Use / Priority Pesticides – Urine (2003-2007)  [NEEDS_VALIDATION for 2003]",1,"2005",2638,2638
+"OPD","Organophosphate Insecticides – Dialkyl Phosphate Metabolites – Urine","PP","Pesticides – Current Use / Priority Pesticides – Urine (2003-2007)  [NEEDS_VALIDATION for 2003]",3,"2003, 2005, 2007",2612,2612
+"PP","Pesticides – Current Use / Priority Pesticides – Urine (2003-2007)  [NEEDS_VALIDATION for 2003]","PEST","Pesticides – Environmental – Urine (2003-2011)  [NEEDS_VALIDATION: 2005-2011]",3,"2003, 2005, 2007",2612,2612
+"PBCD_EXT","Cadmium, Lead, Hg, Selenium & Manganese – Blood (2011-2017)","PAH","Polyaromatic Hydrocarbons (PAHs) – Urine (2003-2011)",1,"2011",2594,2594
+"PBCD_EXT","Cadmium, Lead, Hg, Selenium & Manganese – Blood (2011-2017)","PEST","Pesticides – Environmental – Urine (2003-2011)  [NEEDS_VALIDATION: 2005-2011]",1,"2011",2594,2594
+"UHG","Mercury: Inorganic – Urine (all cycles)","PAH","Polyaromatic Hydrocarbons (PAHs) – Urine (2003-2011)",5,"2003, 2005, 2007, 2009, 2011",2594,2594
+"UHG","Mercury: Inorganic – Urine (all cycles)","PEST","Pesticides – Environmental – Urine (2003-2011)  [NEEDS_VALIDATION: 2005-2011]",5,"2003, 2005, 2007, 2009, 2011",2594,2594
+"PEST","Pesticides – Environmental – Urine (2003-2011)  [NEEDS_VALIDATION: 2005-2011]","UVOC","VOC Metabolites – Urine (2011-2017; 2005-2009 not published per audit)",1,"2011",2551,2551
+"UVOC","VOC Metabolites – Urine (2011-2017; 2005-2009 not published per audit)","PAH","Polyaromatic Hydrocarbons (PAHs) – Urine (2003-2011)",1,"2011",2551,2551
+"SSUVCM","VOC Metabolites – Benzene & Methylating Agent Biomarkers – Surplus – Urine (2015 only)  [NEEDS_VALIDATION]","ALB_CR","Albumin & Creatinine – Urine (all cycles)",1,"2015",2462,2462
+"IHG","Mercury: Inorganic – Blood (2005 only)","PFC","Polyfluoroalkyl Chemicals – Serum (2003-2011, PFC series)",1,"2005",2323,2323
+"PFC","Polyfluoroalkyl Chemicals – Serum (2003-2011, PFC series)","CARB","Pesticides – Carbamates & OP Metabolites – Urine (2005-2007)",2,"2005, 2007",2294,2294
+"PFC","Polyfluoroalkyl Chemicals – Serum (2003-2011, PFC series)","OPD","Organophosphate Insecticides – Dialkyl Phosphate Metabolites – Urine",3,"2003, 2005, 2007",2294,2294
+"IHGEM","Mercury: Inorganic, Ethyl & Methyl – Blood (2007-2017)","SSPFAS","PFAS – Surplus Serum (2013, 2017)",2,"2013, 2017",2183,1672
+"PBCD_EXT","Cadmium, Lead, Hg, Selenium & Manganese – Blood (2011-2017)","SSPFAS","PFAS – Surplus Serum (2013, 2017)",2,"2013, 2017",2183,1672
+"PBCD_EXT","Cadmium, Lead, Hg, Selenium & Manganese – Blood (2011-2017)","PFC","Polyfluoroalkyl Chemicals – Serum (2003-2011, PFC series)",1,"2011",2177,2177
+"PFC","Polyfluoroalkyl Chemicals – Serum (2003-2011, PFC series)","PAH","Polyaromatic Hydrocarbons (PAHs) – Urine (2003-2011)",5,"2003, 2005, 2007, 2009, 2011",2177,2177
+"PFC","Polyfluoroalkyl Chemicals – Serum (2003-2011, PFC series)","PHTHTE","Phthalates & Plasticizers Metabolites – Urine (all cycles)",5,"2003, 2005, 2007, 2009, 2011",2177,2177
+"PFAS","PFAS – Serum (2013-2017, renamed from PFC)","OPD","Organophosphate Insecticides – Dialkyl Phosphate Metabolites – Urine",1,"2015",2170,2170
+"PFAS","PFAS – Serum (2013-2017, renamed from PFC)","UPHOPM","Pyrethroids, Herbicides & OP Metabolites – Urine (2011-2015, UPHOPM series)",2,"2013, 2015",2170,2170
+"PFC","Polyfluoroalkyl Chemicals – Serum (2003-2011, PFC series)","UVOC","VOC Metabolites – Urine (2011-2017; 2005-2009 not published per audit)",1,"2011",2144,2144
+"VOCWB","VOCs – Blood (full panel, all cycles)","SSUVOC","VOC Metabolites – Surplus – Urine (2017 only)",1,"2017",2131,2131
+"VOC_TTHM","VOCs – Trihalomethanes/MTBE/Nitromethane – Blood  [NEEDS_VALIDATION for 2007]","SSUVOC","VOC Metabolites – Surplus – Urine (2017 only)",1,"2017",2131,2131
+"VOCWB","VOCs – Blood (full panel, all cycles)","PP","Pesticides – Current Use / Priority Pesticides – Urine (2003-2007)  [NEEDS_VALIDATION for 2003]",3,"2003, 2005, 2007",2122,980
+"IHGEM","Mercury: Inorganic, Ethyl & Methyl – Blood (2007-2017)","SSUVCM","VOC Metabolites – Benzene & Methylating Agent Biomarkers – Surplus – Urine (2015 only)  [NEEDS_VALIDATION]",1,"2015",2070,2070
+"PBCD_EXT","Cadmium, Lead, Hg, Selenium & Manganese – Blood (2011-2017)","SSUVCM","VOC Metabolites – Benzene & Methylating Agent Biomarkers – Surplus – Urine (2015 only)  [NEEDS_VALIDATION]",1,"2015",2070,2070
+"VOCWB","VOCs – Blood (full panel, all cycles)","SSUVCM","VOC Metabolites – Benzene & Methylating Agent Biomarkers – Surplus – Urine (2015 only)  [NEEDS_VALIDATION]",1,"2015",2070,2070
+"VOC_TTHM","VOCs – Trihalomethanes/MTBE/Nitromethane – Blood  [NEEDS_VALIDATION for 2007]","SSUVCM","VOC Metabolites – Benzene & Methylating Agent Biomarkers – Surplus – Urine (2015 only)  [NEEDS_VALIDATION]",1,"2015",2070,2070
+"PERNT","Perchlorate, Nitrate & Thiocyanate – Urine (2005-2017)","SSUVCM","VOC Metabolites – Benzene & Methylating Agent Biomarkers – Surplus – Urine (2015 only)  [NEEDS_VALIDATION]",1,"2015",1942,1942
+"UHG","Mercury: Inorganic – Urine (all cycles)","SSUVCM","VOC Metabolites – Benzene & Methylating Agent Biomarkers – Surplus – Urine (2015 only)  [NEEDS_VALIDATION]",1,"2015",1942,1942
+"UVOC","VOC Metabolites – Urine (2011-2017; 2005-2009 not published per audit)","SSUVCM","VOC Metabolites – Benzene & Methylating Agent Biomarkers – Surplus – Urine (2015 only)  [NEEDS_VALIDATION]",1,"2015",1942,1942
+"PFAS","PFAS – Serum (2013-2017, renamed from PFC)","VOCWB","VOCs – Blood (full panel, all cycles)",3,"2013, 2015, 2017",1659,600
+"PFAS","PFAS – Serum (2013-2017, renamed from PFC)","VOC_TTHM","VOCs – Trihalomethanes/MTBE/Nitromethane – Blood  [NEEDS_VALIDATION for 2007]",3,"2013, 2015, 2017",1659,600
+"VOCWB","VOCs – Blood (full panel, all cycles)","UPHOPM","Pyrethroids, Herbicides & OP Metabolites – Urine (2011-2015, UPHOPM series)",3,"2011, 2013, 2015",1626,565
+"VOC_TTHM","VOCs – Trihalomethanes/MTBE/Nitromethane – Blood  [NEEDS_VALIDATION for 2007]","UPHOPM","Pyrethroids, Herbicides & OP Metabolites – Urine (2011-2015, UPHOPM series)",3,"2011, 2013, 2015",1626,565
+"PBCD_EXT","Cadmium, Lead, Hg, Selenium & Manganese – Blood (2011-2017)","OPD","Organophosphate Insecticides – Dialkyl Phosphate Metabolites – Urine",1,"2015",1571,1571
+"VOCWB","VOCs – Blood (full panel, all cycles)","PYRET_EARLY","Pyrethroids, Herbicides & OP Metabolites – Urine (2007-2009)",2,"2007, 2009",1138,582
+"VOC_TTHM","VOCs – Trihalomethanes/MTBE/Nitromethane – Blood  [NEEDS_VALIDATION for 2007]","PYRET_EARLY","Pyrethroids, Herbicides & OP Metabolites – Urine (2007-2009)",2,"2007, 2009",1138,582
+"VOC_TTHM","VOCs – Trihalomethanes/MTBE/Nitromethane – Blood  [NEEDS_VALIDATION for 2007]","OPD","Organophosphate Insecticides – Dialkyl Phosphate Metabolites – Urine",2,"2007, 2015",1084,548
+"SSPFAS","PFAS – Surplus Serum (2013, 2017)","VOCWB","VOCs – Blood (full panel, all cycles)",2,"2013, 2017",917,511
+"SSPFAS","PFAS – Surplus Serum (2013, 2017)","VOC_TTHM","VOCs – Trihalomethanes/MTBE/Nitromethane – Blood  [NEEDS_VALIDATION for 2007]",2,"2013, 2017",917,511
+"OPD","Organophosphate Insecticides – Dialkyl Phosphate Metabolites – Urine","UVOC","VOC Metabolites – Urine (2011-2017; 2005-2009 not published per audit)",1,"2015",587,587
+"PERNT","Perchlorate, Nitrate & Thiocyanate – Urine (2005-2017)","UPHOPM","Pyrethroids, Herbicides & OP Metabolites – Urine (2011-2015, UPHOPM series)",3,"2011, 2013, 2015",587,587
+"UHG","Mercury: Inorganic – Urine (all cycles)","OPD","Organophosphate Insecticides – Dialkyl Phosphate Metabolites – Urine",4,"2003, 2005, 2007, 2015",587,587
+"UHG","Mercury: Inorganic – Urine (all cycles)","UPHOPM","Pyrethroids, Herbicides & OP Metabolites – Urine (2011-2015, UPHOPM series)",3,"2011, 2013, 2015",587,587
+"UPHOPM","Pyrethroids, Herbicides & OP Metabolites – Urine (2011-2015, UPHOPM series)","UVOC","VOC Metabolites – Urine (2011-2017; 2005-2009 not published per audit)",3,"2011, 2013, 2015",587,587
+"VOC_TTHM","VOCs – Trihalomethanes/MTBE/Nitromethane – Blood  [NEEDS_VALIDATION for 2007]","PP","Pesticides – Current Use / Priority Pesticides – Urine (2003-2007)  [NEEDS_VALIDATION for 2003]",1,"2007",556,556
+"VOC_TTHM","VOCs – Trihalomethanes/MTBE/Nitromethane – Blood  [NEEDS_VALIDATION for 2007]","CARB","Pesticides – Carbamates & OP Metabolites – Urine (2005-2007)",1,"2007",548,548
+"IHGEM","Mercury: Inorganic, Ethyl & Methyl – Blood (2007-2017)","PFAS_CHILD","PFAS – Children 3-11 Years Subsample – Serum (2013 only)  [NEEDS_VALIDATION]",1,"2013",525,525
+"PBCD_EXT","Cadmium, Lead, Hg, Selenium & Manganese – Blood (2011-2017)","PFAS_CHILD","PFAS – Children 3-11 Years Subsample – Serum (2013 only)  [NEEDS_VALIDATION]",1,"2013",525,525
+"PHTHTE","Phthalates & Plasticizers Metabolites – Urine (all cycles)","SSUVOC","VOC Metabolites – Surplus – Urine (2017 only)",1,"2017",501,501
+"PFAS_CHILD","PFAS – Children 3-11 Years Subsample – Serum (2013 only)  [NEEDS_VALIDATION]","ALB_CR","Albumin & Creatinine – Urine (all cycles)",1,"2013",376,376
+"OPD","Organophosphate Insecticides – Dialkyl Phosphate Metabolites – Urine","SSUVCM","VOC Metabolites – Benzene & Methylating Agent Biomarkers – Surplus – Urine (2015 only)  [NEEDS_VALIDATION]",1,"2015",251,251
+"PFAS","PFAS – Serum (2013-2017, renamed from PFC)","SSUVCM","VOC Metabolites – Benzene & Methylating Agent Biomarkers – Surplus – Urine (2015 only)  [NEEDS_VALIDATION]",1,"2015",251,251
+"PHTHTE","Phthalates & Plasticizers Metabolites – Urine (all cycles)","SSUVCM","VOC Metabolites – Benzene & Methylating Agent Biomarkers – Surplus – Urine (2015 only)  [NEEDS_VALIDATION]",1,"2015",251,251
+"UPHOPM","Pyrethroids, Herbicides & OP Metabolites – Urine (2011-2015, UPHOPM series)","SSUVCM","VOC Metabolites – Benzene & Methylating Agent Biomarkers – Surplus – Urine (2015 only)  [NEEDS_VALIDATION]",1,"2015",251,251
+"PFAS_CHILD","PFAS – Children 3-11 Years Subsample – Serum (2013 only)  [NEEDS_VALIDATION]","UPHOPM","Pyrethroids, Herbicides & OP Metabolites – Urine (2011-2015, UPHOPM series)",1,"2013",133,133
+"PFAS_CHILD","PFAS – Children 3-11 Years Subsample – Serum (2013 only)  [NEEDS_VALIDATION]","PERNT","Perchlorate, Nitrate & Thiocyanate – Urine (2005-2017)",1,"2013",123,123
+"PFAS_CHILD","PFAS – Children 3-11 Years Subsample – Serum (2013 only)  [NEEDS_VALIDATION]","UVOC","VOC Metabolites – Urine (2011-2017; 2005-2009 not published per audit)",1,"2013",123,123
+"UHG","Mercury: Inorganic – Urine (all cycles)","PFAS_CHILD","PFAS – Children 3-11 Years Subsample – Serum (2013 only)  [NEEDS_VALIDATION]",1,"2013",123,123
+"PFAS_CHILD","PFAS – Children 3-11 Years Subsample – Serum (2013 only)  [NEEDS_VALIDATION]","PHTHTE","Phthalates & Plasticizers Metabolites – Urine (all cycles)",1,"2013",120,120
+"CARB","Pesticides – Carbamates & OP Metabolites – Urine (2005-2007)","PAH","Polyaromatic Hydrocarbons (PAHs) – Urine (2003-2011)",2,"2005, 2007",0,0
+"CARB","Pesticides – Carbamates & OP Metabolites – Urine (2005-2007)","PYRET_EARLY","Pyrethroids, Herbicides & OP Metabolites – Urine (2007-2009)",1,"2007",0,0
+"OPD","Organophosphate Insecticides – Dialkyl Phosphate Metabolites – Urine","PAH","Polyaromatic Hydrocarbons (PAHs) – Urine (2003-2011)",3,"2003, 2005, 2007",0,0
+"OPD","Organophosphate Insecticides – Dialkyl Phosphate Metabolites – Urine","PYRET_EARLY","Pyrethroids, Herbicides & OP Metabolites – Urine (2007-2009)",1,"2007",0,0
+"PEST","Pesticides – Environmental – Urine (2003-2011)  [NEEDS_VALIDATION: 2005-2011]","UPHOPM","Pyrethroids, Herbicides & OP Metabolites – Urine (2011-2015, UPHOPM series)",1,"2011",0,0
+"PFAS","PFAS – Serum (2013-2017, renamed from PFC)","PERNT","Perchlorate, Nitrate & Thiocyanate – Urine (2005-2017)",3,"2013, 2015, 2017",0,0
+"PFAS","PFAS – Serum (2013-2017, renamed from PFC)","PFAS_CHILD","PFAS – Children 3-11 Years Subsample – Serum (2013 only)  [NEEDS_VALIDATION]",1,"2013",0,0
+"PFAS","PFAS – Serum (2013-2017, renamed from PFC)","SSUVOC","VOC Metabolites – Surplus – Urine (2017 only)",1,"2017",0,0
+"PFAS","PFAS – Serum (2013-2017, renamed from PFC)","UVOC","VOC Metabolites – Urine (2011-2017; 2005-2009 not published per audit)",3,"2013, 2015, 2017",0,0
+"PFAS_CHILD","PFAS – Children 3-11 Years Subsample – Serum (2013 only)  [NEEDS_VALIDATION]","VOCWB","VOCs – Blood (full panel, all cycles)",1,"2013",0,0
+"PFAS_CHILD","PFAS – Children 3-11 Years Subsample – Serum (2013 only)  [NEEDS_VALIDATION]","VOC_TTHM","VOCs – Trihalomethanes/MTBE/Nitromethane – Blood  [NEEDS_VALIDATION for 2007]",1,"2013",0,0
+"PFC","Polyfluoroalkyl Chemicals – Serum (2003-2011, PFC series)","PP","Pesticides – Current Use / Priority Pesticides – Urine (2003-2007)  [NEEDS_VALIDATION for 2003]",3,"2003, 2005, 2007",0,0
+"PFC","Polyfluoroalkyl Chemicals – Serum (2003-2011, PFC series)","PYRET_EARLY","Pyrethroids, Herbicides & OP Metabolites – Urine (2007-2009)",2,"2007, 2009",0,0
+"PFC","Polyfluoroalkyl Chemicals – Serum (2003-2011, PFC series)","UPHOPM","Pyrethroids, Herbicides & OP Metabolites – Urine (2011-2015, UPHOPM series)",1,"2011",0,0
+"PHTHTE","Phthalates & Plasticizers Metabolites – Urine (all cycles)","CARB","Pesticides – Carbamates & OP Metabolites – Urine (2005-2007)",2,"2005, 2007",0,0
+"PP","Pesticides – Current Use / Priority Pesticides – Urine (2003-2007)  [NEEDS_VALIDATION for 2003]","CARB","Pesticides – Carbamates & OP Metabolites – Urine (2005-2007)",2,"2005, 2007",0,0
+"SSPFAS","PFAS – Surplus Serum (2013, 2017)","PERNT","Perchlorate, Nitrate & Thiocyanate – Urine (2005-2017)",2,"2013, 2017",0,0
+"SSPFAS","PFAS – Surplus Serum (2013, 2017)","PFAS_CHILD","PFAS – Children 3-11 Years Subsample – Serum (2013 only)  [NEEDS_VALIDATION]",1,"2013",0,0
+"SSPFAS","PFAS – Surplus Serum (2013, 2017)","SSUVOC","VOC Metabolites – Surplus – Urine (2017 only)",1,"2017",0,0
+"SSPFAS","PFAS – Surplus Serum (2013, 2017)","UPHOPM","Pyrethroids, Herbicides & OP Metabolites – Urine (2011-2015, UPHOPM series)",1,"2013",0,0
+"SSPFAS","PFAS – Surplus Serum (2013, 2017)","UVOC","VOC Metabolites – Urine (2011-2017; 2005-2009 not published per audit)",2,"2013, 2017",0,0
+"UHG","Mercury: Inorganic – Urine (all cycles)","CARB","Pesticides – Carbamates & OP Metabolites – Urine (2005-2007)",2,"2005, 2007",0,0
+"UHG","Mercury: Inorganic – Urine (all cycles)","PFAS","PFAS – Serum (2013-2017, renamed from PFC)",3,"2013, 2015, 2017",0,0
+"UHG","Mercury: Inorganic – Urine (all cycles)","PP","Pesticides – Current Use / Priority Pesticides – Urine (2003-2007)  [NEEDS_VALIDATION for 2003]",3,"2003, 2005, 2007",0,0
+"UHG","Mercury: Inorganic – Urine (all cycles)","PYRET_EARLY","Pyrethroids, Herbicides & OP Metabolites – Urine (2007-2009)",2,"2007, 2009",0,0
+"UHG","Mercury: Inorganic – Urine (all cycles)","SSPFAS","PFAS – Surplus Serum (2013, 2017)",2,"2013, 2017",0,0
+"UPHOPM","Pyrethroids, Herbicides & OP Metabolites – Urine (2011-2015, UPHOPM series)","PAH","Polyaromatic Hydrocarbons (PAHs) – Urine (2003-2011)",1,"2011",0,0
