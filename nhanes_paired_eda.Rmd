@@ -1,0 +1,224 @@
+---
+title: "NHANES Paired Chemical Exposure — EDA Report"
+subtitle: "Datasets: PBCD_EXT, IHGEM, PFC, PFAS, SSPFAS, PHTHTE, UPHOPM · Cycles 2003–2017"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float:
+      collapsed: false
+    toc_depth: 3
+    theme: flatly
+    highlight: tango
+    self_contained: true
+    code_folding: hide
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo      = TRUE,
+  warning   = FALSE,
+  message   = FALSE,
+  fig.width = 10,
+  fig.height = 5,
+  dpi       = 150
+)
+```
+
+```{r load-data, results='hide'}
+# Load pre-built cache (run nhanes_paired_eda.R first to create it)
+CACHE_FILE <- "nhanes_eda_cache.rds"
+if (!file.exists(CACHE_FILE)) {
+  stop(
+    "Cache file not found: ", CACHE_FILE, "\n",
+    "Please run nhanes_paired_eda.R first to download the data:\n",
+    "  source('nhanes_paired_eda.R')"
+  )
+}
+
+# Load cached data objects
+cache         <- readRDS(CACHE_FILE)
+merged_pairs  <- cache$merged_pairs
+lod_summaries <- cache$lod_summaries
+lab_store     <- cache$lab_store
+needed        <- cache$needed
+
+# Load plot helpers and EDA functions from the R script
+# (source with local=TRUE so only functions/config are pulled in,
+#  not the download sections which are guarded by SKIP_DOWNLOADS)
+source("nhanes_paired_eda.R", local = TRUE)
+```
+
+---
+
+# Overview
+
+This report analyzes 10 dataset pairs from NHANES cycles 2003–2017. For each pair
+**(A, B)**, participants measured in **both** datasets are identified and then examined:
+
+- Distributions (raw and log₁₀-transformed) for chemicals in A and B
+- Geometric means by cycle, sex, and age group
+- Scatter plots and correlation heatmaps between A and B chemicals
+- Limit-of-detection (LOD) summaries per chemical per cycle
+
+## Pairs analyzed
+
+```{r pair-table}
+pair_tbl <- purrr::imap_dfr(eda_results, function(r, lbl) {
+  data.frame(
+    Pair        = lbl,
+    Dataset_A   = r$a_key,
+    Dataset_B   = r$b_key,
+    N           = nrow(r$df),
+    Cycles      = paste(sort(unique(r$df$year)), collapse = ", "),
+    A_chemicals = length(r$cols_a),
+    B_chemicals = length(r$cols_b)
+  )
+})
+knitr::kable(pair_tbl, format.args = list(big.mark = ","))
+```
+
+---
+
+```{r pair-sections, results='asis', fig.height=5}
+# Loop over every pair and emit a full Markdown section dynamically
+for (pair_label in names(eda_results)) {
+  r     <- eda_results[[pair_label]]
+  df    <- r$df
+  a_key <- r$a_key
+  b_key <- r$b_key
+
+  cat("\n\n---\n\n")
+  cat(sprintf("# %s\n\n", pair_label))
+  cat(sprintf(
+    "**Dataset A:** %s &nbsp; | &nbsp; **Dataset B:** %s &nbsp; | &nbsp; **N (overlap):** %s &nbsp; | &nbsp; **Cycles:** %s\n\n",
+    a_key, b_key, format(nrow(df), big.mark = ","),
+    paste(sort(unique(df$year)), collapse = ", ")
+  ))
+
+  # ── Demographics snapshot ──────────────────────────────────────────────────
+  cat("## Demographics\n\n")
+
+  demo_tbl <- df %>%
+    summarise(
+      N           = n(),
+      `Pct Male`  = round(mean(gender == "Male",   na.rm = TRUE) * 100, 1),
+      `Pct Female`= round(mean(gender == "Female", na.rm = TRUE) * 100, 1),
+      `Median Age`= round(median(RIDAGEYR, na.rm = TRUE), 1),
+      `Pct <18`   = round(mean(RIDAGEYR < 18,  na.rm = TRUE) * 100, 1),
+      `Pct 18-44` = round(mean(RIDAGEYR >= 18 & RIDAGEYR < 45, na.rm = TRUE) * 100, 1),
+      `Pct 45-64` = round(mean(RIDAGEYR >= 45 & RIDAGEYR < 65, na.rm = TRUE) * 100, 1),
+      `Pct 65+`   = round(mean(RIDAGEYR >= 65, na.rm = TRUE) * 100, 1)
+    )
+  print(knitr::kable(demo_tbl, format.args = list(big.mark = ",")))
+  cat("\n\n")
+
+  # ── LOD summaries ──────────────────────────────────────────────────────────
+  cat("## Limit of Detection\n\n")
+  cat("### Dataset A:", a_key, "\n\n")
+  lod_a <- r$lod_a
+  if (!is.null(lod_a) && nrow(lod_a) > 0) {
+    print(knitr::kable(lod_a, format.args = list(big.mark = ",")))
+    p <- plot_lod(lod_a, a_key)
+    if (!is.null(p)) print(p)
+  } else { cat("_(No LOD flag columns found)_\n\n") }
+
+  cat("\n\n### Dataset B:", b_key, "\n\n")
+  lod_b <- r$lod_b
+  if (!is.null(lod_b) && nrow(lod_b) > 0) {
+    print(knitr::kable(lod_b, format.args = list(big.mark = ",")))
+    p <- plot_lod(lod_b, b_key)
+    if (!is.null(p)) print(p)
+  } else { cat("_(No LOD flag columns found)_\n\n") }
+
+  # ── Distributions for Dataset A ────────────────────────────────────────────
+  cat("\n\n## Distributions — Dataset A:", a_key, "\n\n")
+  for (col in r$cols_a) {
+    cat("###", col, "\n\n")
+    vals <- df[[col]][!is.na(df[[col]]) & df[[col]] > 0]
+    if (length(vals) < 5) { cat("_(insufficient data)_\n\n"); next }
+
+    # Summary stats
+    stats_tbl <- data.frame(
+      N        = length(vals),
+      Min      = round(min(vals), 4),
+      P25      = round(quantile(vals, 0.25), 4),
+      Median   = round(median(vals), 4),
+      P75      = round(quantile(vals, 0.75), 4),
+      Max      = round(max(vals), 4),
+      GeoMean  = round(geo_mean(vals), 4),
+      `Pct>0`  = round(mean(vals > 0) * 100, 1)
+    )
+    print(knitr::kable(stats_tbl, format.args = list(big.mark = ",")))
+    cat("\n\n")
+    plot_dist(df, col, title_prefix = paste0(a_key, " · "))
+    cat("\n\n")
+    p <- plot_gm_by_cycle(df, col, a_key)
+    if (!is.null(p)) print(p)
+    cat("\n\n")
+    p <- plot_gm_by_demo(df, col, a_key)
+    if (!is.null(p)) print(p)
+    cat("\n\n")
+  }
+
+  # ── Distributions for Dataset B ────────────────────────────────────────────
+  cat("\n\n## Distributions — Dataset B:", b_key, "\n\n")
+  for (col in r$cols_b) {
+    cat("###", col, "\n\n")
+    vals <- df[[col]][!is.na(df[[col]]) & df[[col]] > 0]
+    if (length(vals) < 5) { cat("_(insufficient data)_\n\n"); next }
+
+    stats_tbl <- data.frame(
+      N        = length(vals),
+      Min      = round(min(vals), 4),
+      P25      = round(quantile(vals, 0.25), 4),
+      Median   = round(median(vals), 4),
+      P75      = round(quantile(vals, 0.75), 4),
+      Max      = round(max(vals), 4),
+      GeoMean  = round(geo_mean(vals), 4),
+      `Pct>0`  = round(mean(vals > 0) * 100, 1)
+    )
+    print(knitr::kable(stats_tbl, format.args = list(big.mark = ",")))
+    cat("\n\n")
+    plot_dist(df, col, title_prefix = paste0(b_key, " · "))
+    cat("\n\n")
+    p <- plot_gm_by_cycle(df, col, b_key)
+    if (!is.null(p)) print(p)
+    cat("\n\n")
+    p <- plot_gm_by_demo(df, col, b_key)
+    if (!is.null(p)) print(p)
+    cat("\n\n")
+  }
+
+  # ── A vs B scatter plots ───────────────────────────────────────────────────
+  if (length(r$cols_a) > 0 && length(r$cols_b) > 0) {
+    cat("\n\n## A vs B Scatter Plots\n\n")
+    # Plot up to the top 3 A-chemicals × top 3 B-chemicals
+    top_a <- head(r$cols_a, 3)
+    top_b <- head(r$cols_b, 3)
+    for (ca in top_a) {
+      for (cb in top_b) {
+        p <- plot_scatter(df, ca, cb)
+        if (!is.null(p)) { print(p); cat("\n\n") }
+      }
+    }
+  }
+
+  # ── Correlation heatmap ────────────────────────────────────────────────────
+  if (length(r$cols_a) + length(r$cols_b) >= 2) {
+    cat("\n\n## Correlation Heatmap (log-transformed)\n\n")
+    cat("Each cell shows Pearson correlation after log1p transform. Upper triangle shown.\n\n")
+    plot_correlation(df, r$cols_a, r$cols_b, pair_label)
+    cat("\n\n")
+  }
+}
+```
+
+---
+
+# Session Info
+
+```{r session}
+sessionInfo()
+```
