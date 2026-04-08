@@ -94,16 +94,24 @@ chem_cols <- function(df) {
   nms[grepl("^(LBX|URX)", nms) & !grepl("LC$", nms)]
 }
 
-# LOD comment/flag columns: LBD*LC or URD*LC  (1 = below LOD, 0 = detected)
+# LOD comment/flag columns -- NHANES uses several patterns:
+#   LBD*LC (most blood/serum)  URD*LC (most urine)
+#   LBX*LC (some older files)  URX*LC (some older urine)
 lod_flag_cols <- function(df) {
   nms <- names(df)
-  nms[grepl("^(LBD|URD).+LC$", nms)]
+  nms[grepl("^(LBD|URD|LBX|URX).+LC$", nms)]
 }
 
-# Paired LOD flag column name for a result column (LBX→LBD+LC, URX→URD+LC)
-paired_lod_flag <- function(col) {
-  base <- sub("^LBX", "LBD", sub("^URX", "URD", col))
-  paste0(base, "LC")
+# Paired LOD flag column -- tries standard swap first (LBX->LBD, URX->URD),
+# then falls back to same-prefix+LC used in some older cycles
+paired_lod_flag <- function(col, df_names = NULL) {
+  standard <- paste0(sub("^LBX", "LBD", sub("^URX", "URD", col)), "LC")
+  fallback  <- paste0(col, "LC")
+  if (!is.null(df_names)) {
+    if (standard %in% df_names) return(standard)
+    if (fallback  %in% df_names) return(fallback)
+  }
+  standard
 }
 
 # Safe download — returns NULL with a message instead of stopping
@@ -132,7 +140,7 @@ build_lod_summary <- function(lab_list, dataset_key) {
     if (is.null(df)) return(NULL)
     chems <- chem_cols(df)
     purrr::map_dfr(chems, function(col) {
-      flag <- paired_lod_flag(col)
+      flag <- paired_lod_flag(col, names(df))
       n_total     <- sum(!is.na(df[[col]]))
       n_below_lod <- if (flag %in% names(df)) sum(df[[flag]] == 1, na.rm = TRUE) else NA_integer_
       data.frame(
@@ -245,8 +253,8 @@ if (!SKIP_DOWNLOADS) {
         mutate(
           year      = as.integer(yr),
           pair      = pair_label,
-          gender    = factor(RIAGENDR,  levels = 1:2,       labels = c("Male", "Female")),
-          race_eth  = factor(RIDRETH1,  levels = 1:5,
+          gender    = factor(as.integer(RIAGENDR), levels = 1:2, labels = c("Male", "Female")),
+          race_eth  = factor(as.integer(RIDRETH1), levels = 1:5,
                              labels = c("Mexican American", "Other Hispanic",
                                         "Non-Hispanic White", "Non-Hispanic Black", "Other")),
           age_group = cut(RIDAGEYR,
@@ -469,3 +477,192 @@ for (p in names(eda_results)) {
   message(sprintf("  %-25s  n = %5d  A-chems: %d  B-chems: %d",
                   p, nrow(r$df), length(r$cols_a), length(r$cols_b)))
 }
+
+
+# ==============================================================================
+# SECTION 9 — DASHBOARD EXPORT (Power BI / Tableau)
+# ==============================================================================
+# Run this section after eda_results is built.
+# Produces 5 flat CSV files ready to connect directly to Power BI or Tableau.
+# All files are written to the working directory.
+# ==============================================================================
+
+message("\n── Exporting dashboard CSVs ──────────────────────────────────────────────")
+
+DATASET_LABELS <- c(
+  PBCD_EXT   = "Cadmium, Lead, Hg, Se & Mn (Blood)",
+  IHGEM      = "Mercury: Inorganic, Ethyl & Methyl (Blood)",
+  PFC        = "Polyfluoroalkyl Chemicals (Serum)",
+  PFAS       = "PFAS (Serum)",
+  SSPFAS     = "PFAS Surplus (Serum)",
+  PHTHTE     = "Phthalates & Plasticizers (Urine)",
+  UPHOPM     = "Pyrethroids, Herbicides & OP Metabolites (Urine)"
+)
+
+# ── 1. Long-format chemical values with demographics ──────────────────────────
+# One row per person × chemical × pair × cycle
+message("  Building dash_chemicals_long.csv ...")
+
+chem_long_rows <- list()
+
+for (pair_label in names(eda_results)) {
+  r     <- eda_results[[pair_label]]
+  df    <- r$df
+  a_key <- r$a_key
+  b_key <- r$b_key
+  
+  emit_rows <- function(cols, ds_key) {
+    for (col in cols) {
+      # Strip the .DATASET suffix to get the raw CDC variable name
+      raw_col <- sub(paste0("\\.", ds_key, "$"), "", col)
+      # LOD flag col (LBD*LC or URD*LC)
+      flag_col      <- paired_lod_flag(raw_col, names(df))
+      flag_col_full <- paste0(flag_col, ".", ds_key)
+      
+      vals <- df[[col]]
+      flags <- if (flag_col_full %in% names(df)) df[[flag_col_full]] else NA_integer_
+      
+      chem_long_rows[[length(chem_long_rows) + 1]] <<- data.frame(
+        pair          = pair_label,
+        dataset_a     = a_key,
+        dataset_b     = b_key,
+        dataset       = ds_key,
+        dataset_label = unname(DATASET_LABELS[ds_key]),
+        chemical      = raw_col,
+        year          = df$year,
+        SEQN          = df$SEQN,
+        value         = vals,
+        value_log10   = ifelse(!is.na(vals) & vals > 0, log10(vals), NA_real_),
+        below_lod     = as.integer(flags == 1),
+        gender        = as.character(df$gender),
+        age           = df$RIDAGEYR,
+        age_group     = as.character(df$age_group),
+        race_eth      = as.character(df$race_eth),
+        pir           = df$INDFMPIR,  # poverty-income ratio
+        stringsAsFactors = FALSE
+      )
+    }
+  }
+  
+  emit_rows(r$cols_a, a_key)
+  emit_rows(r$cols_b, b_key)
+}
+
+dash_chemicals_long <- bind_rows(chem_long_rows) %>%
+  filter(!is.na(value)) %>%
+  arrange(pair, dataset, chemical, year)
+
+write.csv(dash_chemicals_long, "dash_chemicals_long.csv", row.names = FALSE)
+message("    Saved: dash_chemicals_long.csv  (",
+        format(nrow(dash_chemicals_long), big.mark=","), " rows)")
+
+# ── 2. Geometric means by chemical × cycle × sex × age group ─────────────────
+message("  Building dash_geomeans.csv ...")
+
+dash_geomeans <- dash_chemicals_long %>%
+  filter(!is.na(value), value > 0, is.na(below_lod) | below_lod == 0) %>%
+  group_by(pair, dataset, dataset_label, chemical, year, gender, age_group) %>%
+  summarise(
+    n         = n(),
+    geo_mean  = exp(mean(log(value))),
+    median    = median(value),
+    p25       = quantile(value, 0.25),
+    p75       = quantile(value, 0.75),
+    .groups   = "drop"
+  )
+
+write.csv(dash_geomeans, "dash_geomeans.csv", row.names = FALSE)
+message("    Saved: dash_geomeans.csv  (",
+        format(nrow(dash_geomeans), big.mark=","), " rows)")
+
+# ── 3. Pairwise correlations per pair × cycle ─────────────────────────────────
+message("  Building dash_correlations.csv ...")
+
+cor_rows <- list()
+
+for (pair_label in names(eda_results)) {
+  r     <- eda_results[[pair_label]]
+  df    <- r$df
+  a_key <- r$a_key
+  b_key <- r$b_key
+  
+  for (yr in sort(unique(df$year))) {
+    df_yr <- df %>% filter(year == yr)
+    for (ca in r$cols_a) {
+      for (cb in r$cols_b) {
+        va <- df_yr[[ca]]; vb <- df_yr[[cb]]
+        ok <- !is.na(va) & !is.na(vb) & va > 0 & vb > 0
+        if (sum(ok) < 5) next
+        r_val <- tryCatch(
+          cor(log10(va[ok]), log10(vb[ok])),
+          error = function(e) NA_real_
+        )
+        cor_rows[[length(cor_rows) + 1]] <- data.frame(
+          pair       = pair_label,
+          dataset_a  = a_key,
+          dataset_b  = b_key,
+          chemical_a = sub(paste0("\\.", a_key, "$"), "", ca),
+          chemical_b = sub(paste0("\\.", b_key, "$"), "", cb),
+          year       = yr,
+          n          = sum(ok),
+          r          = round(r_val, 4),
+          r_squared  = round(r_val^2, 4),
+          stringsAsFactors = FALSE
+        )
+      }
+    }
+  }
+}
+
+dash_correlations <- bind_rows(cor_rows) %>% arrange(pair, year, chemical_a, chemical_b)
+write.csv(dash_correlations, "dash_correlations.csv", row.names = FALSE)
+message("    Saved: dash_correlations.csv  (",
+        format(nrow(dash_correlations), big.mark=","), " rows)")
+
+# ── 4. LOD summary flat table ─────────────────────────────────────────────────
+message("  Building dash_lod_summary.csv ...")
+
+dash_lod <- bind_rows(lod_summaries, .id = "dataset") %>%
+  mutate(dataset_label = unname(DATASET_LABELS[dataset]),
+         lod_flag = dplyr::case_when(
+           pct_below > 50 ~ "Majority below LOD (caution)",
+           pct_below > 20 ~ "Some below LOD",
+           TRUE           ~ "Mostly detected (reliable)"
+         )) %>%
+  arrange(dataset, chemical, year)
+
+write.csv(dash_lod, "dash_lod_summary.csv", row.names = FALSE)
+message("    Saved: dash_lod_summary.csv  (",
+        format(nrow(dash_lod), big.mark=","), " rows)")
+
+# ── 5. Pair overlap (N shared participants per pair × cycle) ──────────────────
+message("  Building dash_pair_overlap.csv ...")
+
+dash_overlap <- purrr::imap_dfr(eda_results, function(r, lbl) {
+  r$df %>%
+    group_by(year) %>%
+    summarise(n_shared = n(), .groups = "drop") %>%
+    mutate(
+      pair          = lbl,
+      dataset_a     = r$a_key,
+      dataset_b     = r$b_key,
+      label_a       = unname(DATASET_LABELS[r$a_key]),
+      label_b       = unname(DATASET_LABELS[r$b_key])
+    )
+}) %>% arrange(pair, year)
+
+write.csv(dash_overlap, "dash_pair_overlap.csv", row.names = FALSE)
+message("    Saved: dash_pair_overlap.csv  (",
+        format(nrow(dash_overlap), big.mark=","), " rows)")
+
+message("\n── Dashboard export complete ─────────────────────────────────────────────")
+message("  Files written to: ", getwd())
+message("  Connect all 5 CSVs in Power BI / Tableau as separate tables.")
+message("  Join on: pair + dataset + chemical + year + SEQN as appropriate.")
+message("")
+message("  Suggested dashboard pages:")
+message("    1. Overview        — dash_pair_overlap.csv (cards + cycle filter)")
+message("    2. Trends          — dash_geomeans.csv    (line chart, slicer: chemical/sex/age)")
+message("    3. Distributions   — dash_chemicals_long.csv (histogram, box plot)")
+message("    4. A vs B          — dash_correlations.csv (heatmap, scatter)")
+message("    5. Detection rates — dash_lod_summary.csv  (bar chart, colour by lod_flag)")
